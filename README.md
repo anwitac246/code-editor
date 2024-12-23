@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Code Editor with Compilation and Execution Support
 
-## Getting Started
+This project is a **web-based code editor** built using the [**Monaco Editor**](https://microsoft.github.io/monaco-editor/), a powerful code editing library that powers Visual Studio Code. It integrates with the [**Judge0 API**](https://rapidapi.com/judge0-official/api/judge0-ce/) to provide real-time code compilation and execution capabilities for various programming languages.
 
-First, run the development server:
+## Features
+1. **Interactive Code Editing**: 
+   - Leverages the Monaco Editor for syntax highlighting, IntelliSense, and a user-friendly code editing experience.
+   - Supports multiple programming languages, consistent with Judge0 API's offerings.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2. **Code Compilation and Execution**:
+   - Uses the Judge0 API to compile and execute code in real-time.
+   - Displays outputs, errors, and execution status directly in the interface.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. **Customizable Themes**:
+   - Includes light and dark themes for user comfort while coding.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+4. **Responsive Design**:
+   - Works seamlessly across desktop and mobile devices.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Workflow
+1. Write or paste your code into the editor.
+2. Select the desired programming language and input custom data if necessary.
+3. Hit the **Run** button to send the code to the Judge0 API for compilation and execution.
+4. View results in the output panel, including runtime errors, compilation messages, or program output.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+### Screenshot of the Editor
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Below is an example screenshot showcasing the editor interface:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+![Code Editor Example](![image](https://github.com/user-attachments/assets/efad8fdc-5d7a-4c2a-84b4-f156d5844f13)
+)
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Technology Stack
+- **Frontend**: Monaco Editor, JavaScript/TypeScript, HTML, and CSS.
+- **Backend Integration**: Judge0 API (via Rapid API) for compiling and running the code.
+- **API Usage**:
+  - Sends source code, language selection, and optional input to the Judge0 API.
+  - Receives and displays the compiled output or errors.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+### Future Enhancements
+- **User Authentication**: Allow users to save code snippets and track submission history.
+- **Real-time Collaboration**: Enable multiple users to collaborate on the same code in real-time.
+- **Advanced Debugging Tools**: Provide step-by-step debugging features with breakpoints.
+
+This project is ideal for learning environments, coding competitions, or personal development purposes.
