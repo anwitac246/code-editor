@@ -29,8 +29,7 @@ This project is a **web-based code editor** built using the [**Monaco Editor**](
 
 Below is an example screenshot showcasing the editor interface:
 
-![Code Editor Example](![image](https://github.com/user-attachments/assets/efad8fdc-5d7a-4c2a-84b4-f156d5844f13)
-)
+![image](https://github.com/user-attachments/assets/a4d6c181-107a-4a04-be5b-3044b9fb631c)
 
 ---
 
