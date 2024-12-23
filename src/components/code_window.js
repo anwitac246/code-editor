@@ -60,7 +60,7 @@ export default function CodeEditorWindow({
                     headers: {
                         "Content-Type": "application/json",
                         "x-rapidapi-host": "judge0-ce.p.rapidapi.com",
-                        "x-rapidapi-key": "2828e8221amshd5adc8be0b83e95p1a4e10jsn8cc8a019ac9a", // Replace with your key
+                        "x-rapidapi-key": "YOUR-API-KEY", // Replace with your key
                     },
                 }
             );
