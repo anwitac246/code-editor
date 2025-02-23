@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # Web-Based Code Editor with Auto-Completion and Bug Fixing
 
 This project is a web-based code editor built using the **Monaco Editor**, the same technology powering **Visual Studio Code**. It integrates with the **Judge0 API** to provide real-time code compilation and execution across multiple programming languages. 
@@ -76,6 +76,7 @@ Example `.env.local` file:
 
 ```bash
 JUDGE0_API_KEY=your_api_key_here
+```
 =======
 # Code Editor with Compilation and Execution Support
 
