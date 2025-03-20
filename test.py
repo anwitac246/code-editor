@@ -27,7 +27,7 @@ BUGFIX_PROMPT = (
     "always provide syntactically correct code snippet"
 )
 
-genai.configure(api_key=os.getenv("NEXT_PUBLIC_GEMINI_API_KEY"))
+genai.configure(api_key="AIzaSyBW_gATBPaS51bVqKiuCHY9smeRjpOYrjY") #os.getenv("NEXT_PUBLIC_GEMINI_API_KEY"))
 
 def normalize_lang(lang_str):
     if not lang_str:

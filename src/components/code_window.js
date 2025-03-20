@@ -9,10 +9,14 @@ import OutputSection from "./output";
 import axios from "axios";
 import useKeyPress from "@/hooks/keypress";
 import dotenv from 'dotenv';
+import Explorer from "./fileExplorer";
+import { saveFile, loadFile } from "./indexedDB"; // IndexedDB helper
+
 dotenv.config();
 
 const apiKey = process.env.NEXT_PUBLIC_JUDGE0_API_KEY;
 console.log(apiKey);
+
 const customStyles = {
   control: (base) => ({
     ...base,
@@ -20,6 +24,7 @@ const customStyles = {
     color: "#fff",
     border: "1px solid #444",
     boxShadow: "3px 3px 0px rgba(0,0,0,0.25)",
+    transition: "all 0.3s ease",
   }),
   singleValue: (base) => ({
     ...base,
@@ -45,11 +50,26 @@ const normalizeLang = (langStr) => {
   return lower;
 };
 
+// Helper to detect language based on file extension from its name.
+function detectLanguageFromFileName(fileName) {
+  const ext = fileName.split('.').pop();
+  switch (ext) {
+    case 'js': return 'javascript';
+    case 'py': return 'python';
+    case 'cpp': return 'cpp';
+    case 'java': return 'java';
+    case 'html': return 'html';
+    case 'css': return 'css';
+    default: return 'plaintext';
+  }
+}
+
 export default function CodeEditorWindow({
   onChange,
   initialLanguage = "javascript",
   code = "Write your code here....",
 }) {
+  // Editor state and metadata
   const [value, setValue] = useState(code);
   const [language, setLanguage] = useState(initialLanguage);
   const [theme, setTheme] = useState("vs-dark");
@@ -58,31 +78,50 @@ export default function CodeEditorWindow({
   const [status, setStatus] = useState("Pending");
   const [timeTaken, setTimeTaken] = useState("N/A");
   const [memoryUsed, setMemoryUsed] = useState("N/A");
+  // State to manage open tabs and the currently active file
+  const [activeEditorTabs, setActiveEditorTabs] = useState([]);
+  const [selectedTabId, setSelectedTabId] = useState(null);
+  const [currentFileId, setCurrentFileId] = useState(null);
+
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const selectedLanguageRef = useRef(language);
   const isCtrlEnterPressed = useKeyPress(["Ctrl", "Enter"]);
 
+  // On mount, load default file if available (using key "currentFile")
+  useEffect(() => {
+    async function fetchDefault() {
+      const savedCode = await loadFile("currentFile");
+      if (savedCode !== null) {
+        setValue(savedCode);
+        setCurrentFileId("currentFile");
+      }
+    }
+    fetchDefault();
+  }, []);
+
   useEffect(() => { selectedLanguageRef.current = language; }, [language]);
 
-  
-
+  // Auto-save file changes using the current file's unique id
   const handleEditorChange = (newValue) => {
     setValue(newValue);
     onChange && onChange("code", newValue);
+    if (currentFileId) {
+      saveFile(currentFileId, newValue);
+    }
   };
 
   const handleLanguageChange = (selectedOption) => setLanguage(selectedOption.value);
   const handleThemeChange = (selectedOption) => {
     const themeName = selectedOption.value;
-
     if (["light", "vs-dark"].includes(themeName)) {
       setTheme(themeName);
     } else {
       defineTheme(themeName).then(() => setTheme(themeName));
     }
   };
-  
+
+  // Execute code via Judge0 (Gemini API integration)
   const handleRunCode = async () => {
     try {
       setStatus("Running...");
@@ -100,8 +139,7 @@ export default function CodeEditorWindow({
           headers: {
             "Content-Type": "application/json",
             "x-rapidapi-host": "judge0-ce.p.rapidapi.com",
-            "x-rapidapi-key":
-              apiKey,
+            "x-rapidapi-key": apiKey,
           },
         }
       );
@@ -112,8 +150,7 @@ export default function CodeEditorWindow({
           {
             headers: {
               "x-rapidapi-host": "judge0-ce.p.rapidapi.com",
-              "x-rapidapi-key":
-                apiKey,
+              "x-rapidapi-key": apiKey,
             },
           }
         );
@@ -129,11 +166,14 @@ export default function CodeEditorWindow({
       setStatus("Error");
     }
   };
+
   useEffect(() => {
     if (isCtrlEnterPressed) {
-        handleRunCode();
+      handleRunCode();
     }
-}, [isCtrlEnterPressed]);
+  }, [isCtrlEnterPressed]);
+
+  // Gemini API integration for bug fixing
   const handleBugFix = async () => {
     try {
       setStatus("Fixing code...");
@@ -157,19 +197,44 @@ export default function CodeEditorWindow({
     }
   };
 
-  const updateBugMarkers = async (model) => {
-    if (normalizeLang(language) !== "python") return;
-    try {
-      console.log("Updating markers for language:", normalizeLang(language));
-      const response = await axios.post("http://localhost:5000/api/bugdetect", {
-        code: model.getValue(),
-        language: normalizeLang(language)
+  // Gemini API integration for inline suggestions
+  const registerInlineCompletionsProvider = (monacoInstance) => {
+    const langs = monacoInstance.languages.getLanguages();
+    langs.forEach((lang) => {
+      monacoInstance.languages.registerInlineCompletionsProvider(lang.id, {
+        provideInlineCompletions: async (model, position) => {
+          const code = model.getValue();
+          if (!code) return { items: [] };
+          try {
+            const response = await axios.post("http://localhost:5000/api/suggestion", {
+              code,
+              language: normalizeLang(selectedLanguageRef.current)
+            });
+            let suggestion = response.data.suggestion || "";
+            if (!suggestion) return { items: [] };
+            return {
+              items: [
+                {
+                  insertText: suggestion,
+                  range: new monacoRef.current.Range(
+                    position.lineNumber,
+                    position.column,
+                    position.lineNumber,
+                    position.column
+                  ),
+                },
+              ],
+              dispose: () => { },
+            };
+          } catch (error) {
+            console.error("Error fetching suggestion:", error);
+            return { items: [] };
+          }
+        },
+        handleItemDidShow: () => { },
+        freeInlineCompletions: () => { },
       });
-      const errors = response.data.errors || [];
-      monaco.editor.setModelMarkers(model, "bugDiagnostics", errors);
-    } catch (error) {
-      console.error("Error fetching bug diagnostics:", error);
-    }
+    });
   };
 
   const registerHoverProvider = (monacoInstance) => {
@@ -200,45 +265,6 @@ export default function CodeEditorWindow({
     });
   };
 
-  const registerInlineCompletionsProvider = (monacoInstance) => {
-    const langs = monacoInstance.languages.getLanguages();
-    langs.forEach((lang) => {
-      monacoInstance.languages.registerInlineCompletionsProvider(lang.id, {
-        provideInlineCompletions: async (model, position) => {
-          const code = model.getValue();
-          if (!code) return { items: [] };
-          try {
-            const response = await axios.post("http://localhost:5000/api/suggestion", {
-              code,
-              language: normalizeLang(selectedLanguageRef.current)
-            });
-            let suggestion = response.data.suggestion || "";
-            if (!suggestion) return { items: [] };
-            return {
-              items: [
-                {
-                  insertText: suggestion,
-                  range: new monacoInstance.Range(
-                    position.lineNumber,
-                    position.column,
-                    position.lineNumber,
-                    position.column
-                  ),
-                },
-              ],
-              dispose: () => { },
-            };
-          } catch (error) {
-            console.error("Error fetching suggestion:", error);
-            return { items: [] };
-          }
-        },
-        handleItemDidShow: () => { },
-        freeInlineCompletions: () => { },
-      });
-    });
-  };
-
   const handleEditorDidMount = (editor, monacoInstance) => {
     editorRef.current = editor;
     monacoRef.current = monacoInstance;
@@ -253,7 +279,7 @@ export default function CodeEditorWindow({
     editor.onDidChangeModelContent(() => {
       const model = editor.getModel();
       if (model) {
-        updateBugMarkers(model);
+        // Trigger inline suggestions with a smooth transition.
         setTimeout(() => {
           editor.trigger("keyboard", "editor.action.inlineSuggest.trigger");
         }, 300);
@@ -261,20 +287,35 @@ export default function CodeEditorWindow({
     });
     setTimeout(() => {
       editor.trigger("keyboard", "editor.action.inlineSuggest.trigger");
-      const model = editor.getModel();
-      if (model) updateBugMarkers(model);
     }, 1500);
-    const bugInterval = setInterval(() => {
-      const model = editor.getModel();
-      if (model) updateBugMarkers(model);
-    }, 10000);
-    editor.onDidDispose(() => {
-      clearInterval(bugInterval);
-    });
+  };
+
+  // When a file is selected from Explorer, load its content from IndexedDB.
+  // Also, update the language based on the file name.
+  const handleFileSelect = async (file) => {
+    setCurrentFileId(file.id);
+    if (file.name) {
+      setLanguage(detectLanguageFromFileName(file.name));
+    }
+    console.log("Loading file:", file);
+    const savedContent = await loadFile(file.id);
+    if (savedContent !== null) {
+      setValue(savedContent);
+    } else {
+      // For new files, start with an empty string.
+      setValue("");
+      saveFile(file.id, "");
+    }
   };
 
   return (
-    <div className="flex flex-col md:flex-row justify-center gap-8 p-4">
+    <div className="flex flex-col md:flex-row justify-center gap-8 p-4 transition-all duration-300">
+      <Explorer 
+        onFileSelect={handleFileSelect}
+        activeEditorTabs={activeEditorTabs}
+        setActiveEditorTabs={setActiveEditorTabs}
+        setSelectedTabId={setSelectedTabId}
+      />
       <div className="flex-1 md:w-[70%]">
         <div className="flex flex-wrap justify-between gap-4 mb-4">
           <div className="w-full md:w-64">
@@ -298,10 +339,9 @@ export default function CodeEditorWindow({
               styles={customStyles}
               onChange={handleThemeChange}
             />
-          
           </div>
         </div>
-        <div className="relative rounded-md overflow-hidden shadow-lg bg-black">
+        <div className="relative rounded-md overflow-hidden shadow-lg bg-black animate-fadeIn">
           <Editor
             height="85vh"
             width="100%"
@@ -331,13 +371,13 @@ export default function CodeEditorWindow({
           <div><span className="font-bold">Memory Used:</span> {memoryUsed} KB</div>
         </div>
         <button
-          className="bg-white text-black rounded-md px-6 py-2 transition-all duration-300 transform hover:bg-gray-200 shadow-md hover:shadow-lg"
+          className="bg-white text-black rounded-md px-6 py-2 transition-transform duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
           onClick={handleRunCode}
         >
           Run
         </button>
         <button
-          className="bg-green-500 text-white rounded-md px-6 py-2 transition-all duration-300 transform hover:bg-green-400 shadow-md hover:shadow-lg"
+          className="bg-green-500 text-white rounded-md px-6 py-2 transition-transform duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
           onClick={handleBugFix}
         >
           Fix Code

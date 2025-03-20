@@ -4,7 +4,7 @@ import json
 def test_bugdetect():
     url = "http://localhost:5000/api/bugdetect"
     payload = {
-        "code": "def add(a, b):\nprint(a + b)",  # Deliberate error (improper indentation)
+        "code": "def add(a, b):\nprint(a + b)", 
         "language": "python"
     }
     response = requests.post(url, json=payload)
@@ -19,7 +19,7 @@ def test_bugdetect():
 def test_bugfix():
     url = "http://localhost:5000/api/bugfix"
     payload = {
-        "code": "def add(a, b):\nprint(a + b)",  # Code to be fixed
+        "code": "def add(a, b):\nprint(a + b)", 
         "language": "python"
     }
     response = requests.post(url, json=payload)
