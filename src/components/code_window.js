@@ -10,7 +10,7 @@ import axios from "axios";
 import useKeyPress from "@/hooks/keypress";
 import dotenv from 'dotenv';
 import Explorer from "./fileExplorer";
-import { saveFile, loadFile } from "./indexedDB"; // IndexedDB helper
+import { saveFile, loadFile } from "./indexedDB"; 
 
 dotenv.config();
 
@@ -50,7 +50,6 @@ const normalizeLang = (langStr) => {
   return lower;
 };
 
-// Helper to detect language based on file extension from its name.
 function detectLanguageFromFileName(fileName) {
   const ext = fileName.split('.').pop();
   switch (ext) {
@@ -69,7 +68,7 @@ export default function CodeEditorWindow({
   initialLanguage = "javascript",
   code = "Write your code here....",
 }) {
-  // Editor state and metadata
+
   const [value, setValue] = useState(code);
   const [language, setLanguage] = useState(initialLanguage);
   const [theme, setTheme] = useState("vs-dark");
@@ -78,7 +77,7 @@ export default function CodeEditorWindow({
   const [status, setStatus] = useState("Pending");
   const [timeTaken, setTimeTaken] = useState("N/A");
   const [memoryUsed, setMemoryUsed] = useState("N/A");
-  // State to manage open tabs and the currently active file
+
   const [activeEditorTabs, setActiveEditorTabs] = useState([]);
   const [selectedTabId, setSelectedTabId] = useState(null);
   const [currentFileId, setCurrentFileId] = useState(null);
@@ -88,7 +87,6 @@ export default function CodeEditorWindow({
   const selectedLanguageRef = useRef(language);
   const isCtrlEnterPressed = useKeyPress(["Ctrl", "Enter"]);
 
-  // On mount, load default file if available (using key "currentFile")
   useEffect(() => {
     async function fetchDefault() {
       const savedCode = await loadFile("currentFile");
@@ -102,7 +100,7 @@ export default function CodeEditorWindow({
 
   useEffect(() => { selectedLanguageRef.current = language; }, [language]);
 
-  // Auto-save file changes using the current file's unique id
+
   const handleEditorChange = (newValue) => {
     setValue(newValue);
     onChange && onChange("code", newValue);
@@ -173,7 +171,6 @@ export default function CodeEditorWindow({
     }
   }, [isCtrlEnterPressed]);
 
-  // Gemini API integration for bug fixing
   const handleBugFix = async () => {
     try {
       setStatus("Fixing code...");
@@ -197,7 +194,6 @@ export default function CodeEditorWindow({
     }
   };
 
-  // Gemini API integration for inline suggestions
   const registerInlineCompletionsProvider = (monacoInstance) => {
     const langs = monacoInstance.languages.getLanguages();
     langs.forEach((lang) => {
@@ -279,7 +275,7 @@ export default function CodeEditorWindow({
     editor.onDidChangeModelContent(() => {
       const model = editor.getModel();
       if (model) {
-        // Trigger inline suggestions with a smooth transition.
+        
         setTimeout(() => {
           editor.trigger("keyboard", "editor.action.inlineSuggest.trigger");
         }, 300);
@@ -290,8 +286,7 @@ export default function CodeEditorWindow({
     }, 1500);
   };
 
-  // When a file is selected from Explorer, load its content from IndexedDB.
-  // Also, update the language based on the file name.
+  
   const handleFileSelect = async (file) => {
     setCurrentFileId(file.id);
     if (file.name) {
