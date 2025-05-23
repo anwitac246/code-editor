@@ -98,7 +98,7 @@ function Explorer({
 
   return (
     <div className="flex flex-col bg-gray-900 text-gray-100 rounded-r-xl shadow-xl w-72 overflow-hidden">
-      {/* Header */}
+     
       <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700">
         <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400">
           Explorer
@@ -121,7 +121,7 @@ function Explorer({
         </div>
       </div>
 
-      {/* File tree */}
+   
       <div className="flex-1 overflow-y-auto bg-gray-900 p-2 custom-scrollbar">
         <FileTree
           fileTree={fileTree}
