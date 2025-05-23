@@ -1,10 +1,19 @@
-/* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
 import FileTree from "./fileTree.js";
 import Tree from "../hooks/tree.js";
-import { saveFileOrFolder, getAllFilesAndFolders, deleteFileOrFolder } from "./indexedDB";
+import {
+  saveFileOrFolder,
+  getAllFilesAndFolders,
+  deleteFileOrFolder,
+} from "./indexedDB";
+import { FolderPlus, FilePlus } from "lucide-react";
 
-function Explorer({ onFileSelect, activeEditorTabs, setActiveEditorTabs, setSelectedTabId }) {
+function Explorer({
+  onFileSelect,
+  activeEditorTabs,
+  setActiveEditorTabs,
+  setSelectedTabId,
+}) {
   const defaultFolder = {
     id: "root",
     type: "folder",
@@ -19,7 +28,12 @@ function Explorer({ onFileSelect, activeEditorTabs, setActiveEditorTabs, setSele
     async function loadFiles() {
       const storedFiles = await getAllFilesAndFolders();
       if (storedFiles.length > 0) {
-        setFileTree({ id: "root", type: "folder", name: "welcome", children: storedFiles });
+        setFileTree({
+          id: "root",
+          type: "folder",
+          name: "welcome",
+          children: storedFiles,
+        });
       }
     }
     loadFiles();
@@ -29,7 +43,9 @@ function Explorer({ onFileSelect, activeEditorTabs, setActiveEditorTabs, setSele
     setFileTree(updateNode(fileTree, id, newName));
     await saveFileOrFolder({ ...fileTree, name: newName });
     setActiveEditorTabs(
-      activeEditorTabs.map((tab) => (tab.id === id ? { ...tab, name: newName } : tab))
+      activeEditorTabs.map((tab) =>
+        tab.id === id ? { ...tab, name: newName } : tab
+      )
     );
   };
 
@@ -40,7 +56,6 @@ function Explorer({ onFileSelect, activeEditorTabs, setActiveEditorTabs, setSele
     setActiveEditorTabs(activeEditorTabs.filter((tab) => tab.id !== id));
   };
 
-  // Create a new file with empty content by default.
   const handleAddFile = async (parentId, fileName, fileData = "") => {
     const newFile = {
       id: Date.now().toString(),
@@ -51,7 +66,10 @@ function Explorer({ onFileSelect, activeEditorTabs, setActiveEditorTabs, setSele
 
     setFileTree(insertNode(fileTree, parentId, newFile));
     await saveFileOrFolder(newFile);
-    setActiveEditorTabs([...activeEditorTabs, { id: newFile.id, name: newFile.name, data: newFile.data }]);
+    setActiveEditorTabs([
+      ...activeEditorTabs,
+      { id: newFile.id, name: newFile.name, data: newFile.data },
+    ]);
     setSelectedTabId(newFile.id);
   };
 
@@ -67,29 +85,67 @@ function Explorer({ onFileSelect, activeEditorTabs, setActiveEditorTabs, setSele
     await saveFileOrFolder(newFolder);
   };
 
-  // When a file is clicked, open it by invoking the callback.
   const openFileInEditor = async (file) => {
-    // Manage active editor tabs using setActiveEditorTabs (there is no function named handleActiveEditorTabs)
     if (!activeEditorTabs.some((tab) => tab.id === file.id)) {
-      setActiveEditorTabs([...activeEditorTabs, { id: file.id, name: file.name, data: file.data }]);
+      setActiveEditorTabs([
+        ...activeEditorTabs,
+        { id: file.id, name: file.name, data: file.data },
+      ]);
     }
     setSelectedTabId(file.id);
     onFileSelect && onFileSelect(file);
   };
 
   return (
-    <div className="min-w-80 border-r border-r-vsdark-3 flex flex-col">
-      <div className="px-4 py-2 border-b border-b-vsdark-3">
-        <h3 className="text-xxs uppercase text-vsdark-4">Explorer</h3>
+    <div className="flex flex-col bg-gray-900 text-gray-100 rounded-r-xl shadow-xl w-72 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700">
+        <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400">
+          Explorer
+        </h3>
+        <div className="flex space-x-2">
+          <button
+            title="New File"
+            onClick={() => handleAddFile('root', 'newFile.js')}
+            className="p-1 rounded hover:bg-gray-700 transition"
+          >
+            <FilePlus size={16} />
+          </button>
+          <button
+            title="New Folder"
+            onClick={() => handleAddFolder('root', 'newFolder')}
+            className="p-1 rounded hover:bg-gray-700 transition"
+          >
+            <FolderPlus size={16} />
+          </button>
+        </div>
       </div>
-      <div className="p-2 overflow-auto h-full">
+
+      {/* File tree */}
+      <div className="flex-1 overflow-y-auto bg-gray-900 p-2 custom-scrollbar">
         <FileTree
-          handleDelete={handleDelete}
+          fileTree={fileTree}
+          openFileInEditor={openFileInEditor}
           handleAddFile={handleAddFile}
           handleAddFolder={handleAddFolder}
           handleRename={handleRename}
-          fileTree={fileTree}
-          openFileInEditor={openFileInEditor}
+          handleDelete={handleDelete}
+          renderFolderToggle={(isOpen) =>
+            isOpen ? (
+              <ChevronDown size={14} className="text-gray-400" />
+            ) : (
+              <ChevronRight size={14} className="text-gray-400" />
+            )
+          }
+          itemClassName={({ isSelected }) =>
+            `flex items-center px-3 py-1 rounded-lg cursor-pointer transition
+             ${
+               isSelected
+                 ? 'bg-cyan-700 text-white'
+                 : 'hover:bg-gray-800 text-gray-300'
+             }`
+          }
+          indentPx={12}
         />
       </div>
     </div>

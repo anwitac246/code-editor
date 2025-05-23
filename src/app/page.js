@@ -1,4 +1,4 @@
-'use client'
+'use client';
 import React, { useState } from "react";
 import CodeEditorWindow from "@/components/code_window";
 
@@ -13,14 +13,23 @@ export default function Home() {
   };
 
   return (
-    <div>
-      <h1 className="text-left font-bold text-2xl m-4">Online Compiler</h1>
-      <CodeEditorWindow
-        onChange={handleCodeChange}
-        code={code}
-        theme={theme}
-        initialLanguage="C++"
-      />
+    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+  
+      <div className="px-6 py-4 bg-gray-900/80 backdrop-blur-sm border-b border-gray-700">
+        <h1 className="text-white text-3xl font-bold">Online Compiler</h1>
+      </div>
+
+
+     
+        <CodeEditorWindow
+          onChange={handleCodeChange}
+          code={code}
+          theme={theme}
+          initialLanguage="cpp"
+        />
+    
+
+      
     </div>
   );
 }

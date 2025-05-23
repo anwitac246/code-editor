@@ -297,31 +297,53 @@ export default function CodeEditorWindow({
     if (savedContent !== null) {
       setValue(savedContent);
     } else {
-      // For new files, start with an empty string.
+      
       setValue("");
       saveFile(file.id, "");
     }
   };
 
   return (
-    <div className="flex flex-col md:flex-row justify-center gap-8 p-4 transition-all duration-300">
-      <Explorer 
+    <div className="flex flex-col md:flex-row justify-center gap-6 p-6 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 min-h-screen text-gray-200">
+      <Explorer
         onFileSelect={handleFileSelect}
         activeEditorTabs={activeEditorTabs}
         setActiveEditorTabs={setActiveEditorTabs}
         setSelectedTabId={setSelectedTabId}
       />
-      <div className="flex-1 md:w-[70%]">
-        <div className="flex flex-wrap justify-between gap-4 mb-4">
+
+      <div className="flex-1 md:w-[70%] flex flex-col">
+        <div className="flex flex-wrap justify-between gap-5 mb-5">
           <div className="w-full md:w-64">
             <Select
               options={languageOptions}
               value={languageOptions.find((opt) => opt.value === language)}
               onChange={handleLanguageChange}
               placeholder="Select Language"
-              styles={customStyles}
+              styles={{
+                ...customStyles,
+                control: (base) => ({
+                  ...base,
+                  backgroundColor: "#1f2937",
+                  borderColor: "#374151",
+                  boxShadow: "0 0 8px rgba(59,130,246,0.5)",
+                  transition: "all 0.3s ease",
+                }),
+                option: (base, state) => ({
+                  ...base,
+                  backgroundColor: state.isFocused ? "#2563eb" : "#1f2937",
+                  color: "white",
+                  cursor: "pointer",
+                  transition: "background-color 0.3s ease",
+                }),
+                singleValue: (base) => ({
+                  ...base,
+                  color: "white",
+                }),
+              }}
             />
           </div>
+
           <div className="w-full md:w-64">
             <Select
               placeholder="Select Theme"
@@ -331,12 +353,33 @@ export default function CodeEditorWindow({
                 key: themeId,
               }))}
               value={{ label: theme, value: theme }}
-              styles={customStyles}
+              styles={{
+                ...customStyles,
+                control: (base) => ({
+                  ...base,
+                  backgroundColor: "#1f2937",
+                  borderColor: "#374151",
+                  boxShadow: "0 0 8px rgba(59,130,246,0.5)",
+                  transition: "all 0.3s ease",
+                }),
+                option: (base, state) => ({
+                  ...base,
+                  backgroundColor: state.isFocused ? "#2563eb" : "#1f2937",
+                  color: "white",
+                  cursor: "pointer",
+                  transition: "background-color 0.3s ease",
+                }),
+                singleValue: (base) => ({
+                  ...base,
+                  color: "white",
+                }),
+              }}
               onChange={handleThemeChange}
             />
           </div>
         </div>
-        <div className="relative rounded-md overflow-hidden shadow-lg bg-black animate-fadeIn">
+
+        <div className="relative rounded-xl overflow-hidden shadow-2xl bg-gradient-to-tr from-gray-800 to-gray-900 animate-fadeIn">
           <Editor
             height="85vh"
             width="100%"
@@ -345,34 +388,58 @@ export default function CodeEditorWindow({
             theme={theme}
             onChange={handleEditorChange}
             onMount={handleEditorDidMount}
-            options={{ inlineSuggest: { enabled: true }, tabCompletion: "on" }}
+            options={{
+              fontSize: 16,
+              fontFamily: "'Fira Code', monospace",
+              fontLigatures: true,
+              lineNumbers: "on",
+              minimap: { enabled: false },
+              inlineSuggest: { enabled: true },
+              tabCompletion: "on",
+              smoothScrolling: true,
+              cursorBlinking: "phase",
+              cursorSmoothCaretAnimation: true,
+            }}
           />
         </div>
       </div>
-      <div className="w-full md:w-1/3 flex flex-col gap-4">
-        <div className="flex flex-col gap-4">
-          <textarea
-            rows="10"
-            value={customInput}
-            onChange={(e) => setCustomInput(e.target.value)}
-            placeholder="Custom input"
-            className="focus:outline-none text-white w-full border-2 border-white rounded-md shadow-md hover:shadow-lg px-4 py-2 bg-black transition-all duration-300"
-          />
-          <OutputSection output={output} />
+
+      <div className="w-full md:w-1/3 flex flex-col gap-5">
+        <textarea
+          rows="10"
+          value={customInput}
+          onChange={(e) => setCustomInput(e.target.value)}
+          placeholder="Custom input"
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-5 py-4 text-gray-200 shadow-inner placeholder-gray-500 resize-y
+                     focus:outline-none focus:ring-4 focus:ring-cyan-500 transition duration-300"
+          spellCheck={false}
+        />
+
+        <OutputSection
+          output={output}
+          className="bg-gray-900 rounded-lg p-4 shadow-inner font-mono text-sm whitespace-pre-wrap min-h-[150px] overflow-auto"
+        />
+
+        <div className="text-gray-300 text-sm flex flex-col gap-2">
+          <div>
+            <span className="font-semibold text-cyan-400">Status:</span> {status}
+          </div>
+          <div>
+            <span className="font-semibold text-cyan-400">Time Taken:</span> {timeTaken} seconds
+          </div>
+          <div>
+            <span className="font-semibold text-cyan-400">Memory Used:</span> {memoryUsed} KB
+          </div>
         </div>
-        <div className="text-white text-sm flex flex-col gap-2 mb-4">
-          <div><span className="font-bold">Status:</span> {status}</div>
-          <div><span className="font-bold">Time Taken:</span> {timeTaken} seconds</div>
-          <div><span className="font-bold">Memory Used:</span> {memoryUsed} KB</div>
-        </div>
+
         <button
-          className="bg-white text-black rounded-md px-6 py-2 transition-transform duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
+          className="w-full bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg px-6 py-3 font-semibold transition-transform duration-300 transform hover:scale-105 shadow-lg"
           onClick={handleRunCode}
         >
           Run
         </button>
         <button
-          className="bg-green-500 text-white rounded-md px-6 py-2 transition-transform duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
+          className="w-full bg-green-600 hover:bg-green-700 text-white rounded-lg px-6 py-3 font-semibold transition-transform duration-300 transform hover:scale-105 shadow-lg"
           onClick={handleBugFix}
         >
           Fix Code
