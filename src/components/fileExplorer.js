@@ -1,18 +1,14 @@
 import { useEffect, useState } from "react";
 import FileTree from "./fileTree.js";
-import Tree from "../hooks/tree.js";
-import {
-  saveFileOrFolder,
-  getAllFilesAndFolders,
-  deleteFileOrFolder,
-} from "./indexedDB";
-import { FolderPlus, FilePlus } from "lucide-react";
+import { FolderPlus, FilePlus, ChevronDown, ChevronRight } from "lucide-react";
+import axios from "axios";
 
 function Explorer({
   onFileSelect,
   activeEditorTabs,
   setActiveEditorTabs,
   setSelectedTabId,
+  uid,
 }) {
   const defaultFolder = {
     id: "root",
@@ -22,26 +18,100 @@ function Explorer({
   };
 
   const [fileTree, setFileTree] = useState(defaultFolder);
-  const { insertNode, deleteNode, updateNode } = Tree();
+
+  function insertNode(tree, parentId, newNode) {
+    if (tree.id === parentId) {
+      return {
+        ...tree,
+        children: [...(tree.children || []), newNode],
+      };
+    }
+    if (tree.children) {
+      return {
+        ...tree,
+        children: tree.children.map((child) => insertNode(child, parentId, newNode)),
+      };
+    }
+    return tree;
+  }
+
+  function updateNode(tree, id, newName) {
+    if (tree.id === id) {
+      return {
+        ...tree,
+        name: newName,
+      };
+    }
+    if (tree.children) {
+      return {
+        ...tree,
+        children: tree.children.map((child) => updateNode(child, id, newName)),
+      };
+    }
+    return tree;
+  }
+
+  function deleteNode(tree, id) {
+    if (!tree.children) return tree;
+
+    const filteredChildren = tree.children
+      .filter((child) => child.id !== id)
+      .map((child) => deleteNode(child, id));
+
+    return {
+      ...tree,
+      children: filteredChildren,
+    };
+  }
 
   useEffect(() => {
-    async function loadFiles() {
-      const storedFiles = await getAllFilesAndFolders();
-      if (storedFiles.length > 0) {
-        setFileTree({
-          id: "root",
-          type: "folder",
-          name: "welcome",
-          children: storedFiles,
-        });
+  async function loadFiles() {
+    if (!uid) {
+      console.warn("UID is missing — skipping file tree load.");
+      return;
+    }
+
+    try {
+      const res = await axios.get("http://localhost:5001/api/getFileTree", {
+        params: { uid },
+      });
+
+      if (res.status === 200 && res.data && typeof res.data === "object") {
+        setFileTree(res.data);
+      } else {
+        console.warn("No file tree found — using default folder.");
+        setFileTree(defaultFolder);
+      }
+    } catch (error) {
+      if (error.response?.status === 404) {
+        console.warn("File tree not found for user — initializing empty structure.");
+        setFileTree(defaultFolder);
+      } else {
+        console.error("Error loading file tree from backend:", error);
       }
     }
-    loadFiles();
-  }, []);
+  }
+
+  loadFiles();
+}, [uid]);
+
+
+  const saveFullTreeToMongoDB = async (updatedTree) => {
+    try {
+      await axios.post("http://localhost:5001/api/saveFileTree", {
+        fileTree: updatedTree,
+        uid,
+      });
+      console.log("File tree saved to MongoDB");
+    } catch (error) {
+      console.error("Error saving file tree to MongoDB:", error);
+    }
+  };
 
   const handleRename = async (id, newName) => {
-    setFileTree(updateNode(fileTree, id, newName));
-    await saveFileOrFolder({ ...fileTree, name: newName });
+    const updatedTree = updateNode(fileTree, id, newName);
+    setFileTree(updatedTree);
+    await saveFullTreeToMongoDB(updatedTree);
     setActiveEditorTabs(
       activeEditorTabs.map((tab) =>
         tab.id === id ? { ...tab, name: newName } : tab
@@ -52,7 +122,7 @@ function Explorer({
   const handleDelete = async (id) => {
     const updatedTree = deleteNode(fileTree, id);
     setFileTree(updatedTree || defaultFolder);
-    await deleteFileOrFolder(id);
+    await saveFullTreeToMongoDB(updatedTree || defaultFolder);
     setActiveEditorTabs(activeEditorTabs.filter((tab) => tab.id !== id));
   };
 
@@ -61,11 +131,12 @@ function Explorer({
       id: Date.now().toString(),
       type: "file",
       name: fileName,
-      data: fileData || "",
+      data: fileData,
     };
 
-    setFileTree(insertNode(fileTree, parentId, newFile));
-    await saveFileOrFolder(newFile);
+    const updatedTree = insertNode(fileTree, parentId, newFile);
+    setFileTree(updatedTree);
+    await saveFullTreeToMongoDB(updatedTree);
     setActiveEditorTabs([
       ...activeEditorTabs,
       { id: newFile.id, name: newFile.name, data: newFile.data },
@@ -81,8 +152,9 @@ function Explorer({
       children: [],
     };
 
-    setFileTree(insertNode(fileTree, parentId, newFolder));
-    await saveFileOrFolder(newFolder);
+    const updatedTree = insertNode(fileTree, parentId, newFolder);
+    setFileTree(updatedTree);
+    await saveFullTreeToMongoDB(updatedTree);
   };
 
   const openFileInEditor = async (file) => {
@@ -98,7 +170,6 @@ function Explorer({
 
   return (
     <div className="flex flex-col bg-gray-900 text-gray-100 rounded-r-xl shadow-xl w-72 overflow-hidden">
-     
       <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700">
         <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400">
           Explorer
@@ -106,14 +177,14 @@ function Explorer({
         <div className="flex space-x-2">
           <button
             title="New File"
-            onClick={() => handleAddFile('root', 'newFile.js')}
+            onClick={() => handleAddFile("root", "newFile.js")}
             className="p-1 rounded hover:bg-gray-700 transition"
           >
             <FilePlus size={16} />
           </button>
           <button
             title="New Folder"
-            onClick={() => handleAddFolder('root', 'newFolder')}
+            onClick={() => handleAddFolder("root", "newFolder")}
             className="p-1 rounded hover:bg-gray-700 transition"
           >
             <FolderPlus size={16} />
@@ -121,7 +192,6 @@ function Explorer({
         </div>
       </div>
 
-   
       <div className="flex-1 overflow-y-auto bg-gray-900 p-2 custom-scrollbar">
         <FileTree
           fileTree={fileTree}
@@ -141,8 +211,8 @@ function Explorer({
             `flex items-center px-3 py-1 rounded-lg cursor-pointer transition
              ${
                isSelected
-                 ? 'bg-cyan-700 text-white'
-                 : 'hover:bg-gray-800 text-gray-300'
+                 ? "bg-cyan-700 text-white"
+                 : "hover:bg-gray-800 text-gray-300"
              }`
           }
           indentPx={12}

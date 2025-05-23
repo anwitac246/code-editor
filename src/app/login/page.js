@@ -64,7 +64,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen text-white">
       
       <div className="w-1/2 bg-gradient-to-br from-teal-600 to-blue-700 p-12 flex flex-col justify-center">
-        <h1 className="text-4xl font-bold mb-4">CodeCraft</h1>
+        <h1 className="text-4xl font-bold mb-4 font-mono">CodeCraft</h1>
         <p className="text-lg leading-relaxed text-white/90">
           Your personalized cloud-based code editor with real-time collaboration,
           intelligent suggestions, and integrated terminal. Code faster, smarter,

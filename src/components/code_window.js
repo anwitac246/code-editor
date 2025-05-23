@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
@@ -11,11 +12,12 @@ import useKeyPress from "@/hooks/keypress";
 import dotenv from 'dotenv';
 import Explorer from "./fileExplorer";
 import { saveFile, loadFile } from "./indexedDB"; 
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase-config";
 
 dotenv.config();
 
 const apiKey = process.env.NEXT_PUBLIC_JUDGE0_API_KEY;
-console.log(apiKey);
 
 const customStyles = {
   control: (base) => ({
@@ -77,7 +79,7 @@ export default function CodeEditorWindow({
   const [status, setStatus] = useState("Pending");
   const [timeTaken, setTimeTaken] = useState("N/A");
   const [memoryUsed, setMemoryUsed] = useState("N/A");
-
+  const [uid, setUid] = useState(null);
   const [activeEditorTabs, setActiveEditorTabs] = useState([]);
   const [selectedTabId, setSelectedTabId] = useState(null);
   const [currentFileId, setCurrentFileId] = useState(null);
@@ -97,15 +99,35 @@ export default function CodeEditorWindow({
     }
     fetchDefault();
   }, []);
-
+   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) setUid(user.uid);
+      else setUid(null);
+    });
+    return () => unsubscribe();
+  }, []);
   useEffect(() => { selectedLanguageRef.current = language; }, [language]);
 
+  const saveToMongoDB = async (fileId, fileName, content, lang) => {
+    try {
+      await axios.post('http://localhost:5001/api/saveFile', {
+        fileName: fileName || fileId,
+        content,
+        language: lang,
+        uid
+      });
+      console.log(`File ${fileName || fileId} saved to MongoDB`);
+    } catch (error) {
+      console.error('Error saving to MongoDB Secondary: MongoDB', error);
+    }
+  };
 
   const handleEditorChange = (newValue) => {
     setValue(newValue);
     onChange && onChange("code", newValue);
     if (currentFileId) {
       saveFile(currentFileId, newValue);
+      saveToMongoDB(currentFileId, activeEditorTabs.find(tab => tab.id === currentFileId)?.name, newValue, language);
     }
   };
 
@@ -119,7 +141,6 @@ export default function CodeEditorWindow({
     }
   };
 
-  // Execute code via Judge0 (Gemini API integration)
   const handleRunCode = async () => {
     try {
       setStatus("Running...");
@@ -275,7 +296,6 @@ export default function CodeEditorWindow({
     editor.onDidChangeModelContent(() => {
       const model = editor.getModel();
       if (model) {
-        
         setTimeout(() => {
           editor.trigger("keyboard", "editor.action.inlineSuggest.trigger");
         }, 300);
@@ -286,7 +306,6 @@ export default function CodeEditorWindow({
     }, 1500);
   };
 
-  
   const handleFileSelect = async (file) => {
     setCurrentFileId(file.id);
     if (file.name) {
@@ -297,15 +316,16 @@ export default function CodeEditorWindow({
     if (savedContent !== null) {
       setValue(savedContent);
     } else {
-      
       setValue("");
       saveFile(file.id, "");
+      saveToMongoDB(file.id, file.name, "", language);
     }
   };
 
   return (
     <div className="flex flex-col md:flex-row justify-center gap-6 p-6 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 min-h-screen text-gray-200">
       <Explorer
+      uid={uid}
         onFileSelect={handleFileSelect}
         activeEditorTabs={activeEditorTabs}
         setActiveEditorTabs={setActiveEditorTabs}

@@ -37,7 +37,7 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       <div className="px-6 py-4 bg-gray-900/80 backdrop-blur-sm border-b border-gray-700 flex items-center justify-between">
-        <h1 className="text-white text-3xl font-bold">CodeCraft</h1>
+        <h1 className="text-white text-3xl font-bold font-mono">CodeCraft</h1>
         {user ? (
           <button
             onClick={handleLogout}

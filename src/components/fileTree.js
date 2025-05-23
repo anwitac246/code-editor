@@ -1,15 +1,15 @@
-/* eslint-disable react/prop-types */
+
 "use client"
 import { ChevronRightIcon, FileIcon, KebabHorizontalIcon } from "@primer/octicons-react";
 import { useState, useEffect, useRef } from "react";
 
-export default function FileTree({ 
-  fileTree, 
-  openFileInEditor,  // <-- renamed prop (used instead of handleActiveEditorTabs)
-  handleAddFile, 
-  handleAddFolder, 
-  handleDelete, 
-  handleRename 
+export default function FileTree({
+  fileTree,
+  openFileInEditor,
+  handleAddFile,
+  handleAddFolder,
+  handleDelete,
+  handleRename
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
@@ -132,9 +132,8 @@ export default function FileTree({
             <button
               ref={buttonRef}
               onClick={handleKebabClick}
-              className={`p-1 rounded flex items-center justify-center hover:bg-vsdark-4/50 hover:text-vsdark-6 focus:bg-vsdark-4/50 focus:text-vsdark-6 ${
-                showOptions || isDropdownOpen ? "visible" : "invisible"
-              }`}
+              className={`p-1 rounded flex items-center justify-center hover:bg-vsdark-4/50 hover:text-vsdark-6 focus:bg-vsdark-4/50 focus:text-vsdark-6 ${showOptions || isDropdownOpen ? "visible" : "invisible"
+                }`}
             >
               <KebabHorizontalIcon size={10} />
             </button>
@@ -165,25 +164,26 @@ export default function FileTree({
                 />
               </form>
             )}
-            {fileTree.children?.map((child) => (
-              <FileTree
-                key={child.id}
-                handleAddFile={handleAddFile}
-                handleAddFolder={handleAddFolder}
-                fileTree={child}
-                handleRename={handleRename}
-                // Pass the openFileInEditor callback to child file/folder nodes
-                openFileInEditor={openFileInEditor}
-                handleDelete={handleDelete}
-              />
+            {fileTree.children?.filter(Boolean).map((child) => (
+              child.id ? (
+                <FileTree
+                  key={child.id}
+                  handleAddFile={handleAddFile}
+                  handleAddFolder={handleAddFolder}
+                  fileTree={child}
+                  handleRename={handleRename}
+                  openFileInEditor={openFileInEditor}
+                  handleDelete={handleDelete}
+                />
+              ) : null
             ))}
+
           </div>
         )}
       </>
     );
   }
 
-  // For file nodes, call openFileInEditor instead of the undefined handleActiveEditorTabs.
   return (
     <div
       onClick={() => openFileInEditor && openFileInEditor(fileTree)}
@@ -219,9 +219,8 @@ export default function FileTree({
         <button
           ref={buttonRef}
           onClick={handleKebabClick}
-          className={`p-1 rounded flex items-center justify-center hover:bg-vsdark-4/50 hover:text-vsdark-6 focus:bg-vsdark-4/50 focus:text-vsdark-6 ${
-            showOptions || isDropdownOpen ? "visible" : "invisible"
-          }`}
+          className={`p-1 rounded flex items-center justify-center hover:bg-vsdark-4/50 hover:text-vsdark-6 focus:bg-vsdark-4/50 focus:text-vsdark-6 ${showOptions || isDropdownOpen ? "visible" : "invisible"
+            }`}
         >
           <KebabHorizontalIcon size={10} />
         </button>
