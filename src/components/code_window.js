@@ -12,6 +12,10 @@ import Explorer from './fileExplorer';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase-config';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Explorer from './fileExplorer';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/lib/firebase-config';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 dotenv.config();
 
@@ -25,13 +29,20 @@ const customStyles = {
     border: '1px solid #444',
     boxShadow: '3px 3px 0px rgba(0,0,0,0.25)',
     transition: 'all 0.3s ease',
+    backgroundColor: '#111',
+    color: '#fff',
+    border: '1px solid #444',
+    boxShadow: '3px 3px 0px rgba(0,0,0,0.25)',
+    transition: 'all 0.3s ease',
   }),
   singleValue: (base) => ({
     ...base,
     color: '#fff',
+    color: '#fff',
   }),
   menu: (base) => ({
     ...base,
+    backgroundColor: '#111',
     backgroundColor: '#111',
   }),
   option: (base, state) => ({
@@ -40,10 +51,15 @@ const customStyles = {
     color: '#fff',
     cursor: 'pointer',
     transition: 'background-color 0.2s ease',
+    backgroundColor: state.isFocused ? '#333' : '#111',
+    color: '#fff',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s ease',
   }),
 };
 
 const normalizeLang = (langStr) => {
+  if (!langStr) return '';
   if (!langStr) return '';
   const lower = langStr.toLowerCase();
   if (lower.includes('c++') || lower === 'cpp') return 'cpp';
@@ -194,6 +210,7 @@ const detectLanguageFromFileName = (fileName) => {
       return 'plaintext';
   }
 };
+};
 
 export default function CodeEditorWindow({
   onChange,
@@ -203,6 +220,12 @@ export default function CodeEditorWindow({
 }) {
   const [value, setValue] = useState(code);
   const [language, setLanguage] = useState(initialLanguage);
+  const [theme, setTheme] = useState('vs-dark');
+  const [customInput, setCustomInput] = useState('');
+  const [output, setOutput] = useState('');
+  const [status, setStatus] = useState('Pending');
+  const [timeTaken, setTimeTaken] = useState('N/A');
+  const [memoryUsed, setMemoryUsed] = useState('N/A');
   const [theme, setTheme] = useState('vs-dark');
   const [customInput, setCustomInput] = useState('');
   const [output, setOutput] = useState('');
@@ -277,7 +300,10 @@ export default function CodeEditorWindow({
       try {
         const res = await axios.get(`http://localhost:5001/api/getFileTree?uid=${uid}&projectId=${projectId}`);
         setProject({ projectId, fileTree: res.data });
+        const res = await axios.get(`http://localhost:5001/api/getFileTree?uid=${uid}&projectId=${projectId}`);
+        setProject({ projectId, fileTree: res.data });
       } catch (err) {
+        console.error('Failed to load project:', err);
         console.error('Failed to load project:', err);
         setProject(null);
       } finally {
@@ -285,6 +311,10 @@ export default function CodeEditorWindow({
       }
     };
 
+    if (uid) {
+      fetchProject();
+    }
+  }, [projectId, isAuthenticated, uid]);
     if (uid) {
       fetchProject();
     }
@@ -298,6 +328,28 @@ export default function CodeEditorWindow({
       } else {
         setUid(null);
         setIsAuthenticated(false);
+        setGuestFiles(
+          new Map([
+            [
+              'sample-js',
+              {
+                id: 'sample-js',
+                name: 'sample.js',
+                content: '// Welcome to the Code Editor!\n// You\'re in guest mode - changes won\'t be saved permanently.\n\nconsole.log("Hello, World!");\n\n// Try writing some code here!',
+                language: 'javascript',
+              },
+            ],
+            [
+              'sample-py',
+              {
+                id: 'sample-py',
+                name: 'sample.py',
+                content: '# Welcome to the Code Editor!\n# You\'re in guest mode - changes won\'t be saved permanently.\n\nprint("Hello, World!")\n\n# Try writing some Python code here!',
+                language: 'python',
+              },
+            ],
+          ])
+        );
       }
     });
     return () => unsubscribe();
@@ -306,9 +358,14 @@ export default function CodeEditorWindow({
   useEffect(() => {
     selectedLanguageRef.current = language;
   }, [language]);
+  useEffect(() => {
+    selectedLanguageRef.current = language;
+  }, [language]);
 
   const saveToMongoDB = async (fileId, content, lang) => {
+  const saveToMongoDB = async (fileId, content, lang) => {
     if (!isAuthenticated || !uid) {
+      console.log('Guest mode: Skipping MongoDB save');
       console.log('Guest mode: Skipping MongoDB save');
       return;
     }
@@ -316,11 +373,14 @@ export default function CodeEditorWindow({
     try {
       await axios.post('http://localhost:5001/api/saveFile', {
         fileId,
+        fileId,
         content,
         language: lang,
         uid,
         projectId,
+        projectId,
       });
+      console.log(`File ${fileId} saved to MongoDB`);
       console.log(`File ${fileId} saved to MongoDB`);
     } catch (error) {
       console.error('Error saving to MongoDB:', error);
@@ -357,9 +417,12 @@ export default function CodeEditorWindow({
     setValue(newValue);
     onChange && onChange('code', newValue);
 
+    onChange && onChange('code', newValue);
+
     if (currentFileId) {
       await saveFileLocally(currentFileId, newValue);
       if (isAuthenticated) {
+        saveToMongoDB(currentFileId, newValue, language);
         saveToMongoDB(currentFileId, newValue, language);
       }
     }
@@ -372,8 +435,16 @@ export default function CodeEditorWindow({
     }
   };
 
+  const handleLanguageChange = (selectedOption) => {
+    setLanguage(selectedOption.value);
+    if (currentFileId && isAuthenticated) {
+      saveToMongoDB(currentFileId, value, selectedOption.value);
+    }
+  };
+
   const handleThemeChange = (selectedOption) => {
     const themeName = selectedOption.value;
+    if (['light', 'vs-dark'].includes(themeName)) {
     if (['light', 'vs-dark'].includes(themeName)) {
       setTheme(themeName);
     } else {
@@ -405,6 +476,9 @@ export default function CodeEditorWindow({
             'Content-Type': 'application/json',
             'x-rapidapi-host': 'judge0-ce.p.rapidapi.com',
             'x-rapidapi-key': apiKey,
+            'Content-Type': 'application/json',
+            'x-rapidapi-host': 'judge0-ce.p.rapidapi.com',
+            'x-rapidapi-key': apiKey,
           },
         }
       );
@@ -423,7 +497,10 @@ export default function CodeEditorWindow({
     try {
       setStatus('Fixing code...');
       const response = await axios.post('http://localhost:5000/api/bugfix', {
+      setStatus('Fixing code...');
+      const response = await axios.post('http://localhost:5000/api/bugfix', {
         code: value,
+        language: normalizeLang(language),
         language: normalizeLang(language),
       });
       const fixedCode = response.data.fixed_code;
@@ -434,11 +511,21 @@ export default function CodeEditorWindow({
         if (currentFileId && isAuthenticated) {
           saveToMongoDB(currentFileId, fixedCode, language);
         }
+        setOutput('Bug fix applied.');
+        setStatus('Fixed');
+        if (currentFileId && isAuthenticated) {
+          saveToMongoDB(currentFileId, fixedCode, language);
+        }
       } else {
+        setOutput('No fix available.');
+        setStatus('No fix');
         setOutput('No fix available.');
         setStatus('No fix');
       }
     } catch (error) {
+      console.error('Error fixing code:', error);
+      setOutput('Error fixing code: ' + error.message);
+      setStatus('Error');
       console.error('Error fixing code:', error);
       setOutput('Error fixing code: ' + error.message);
       setStatus('Error');
@@ -454,9 +541,12 @@ export default function CodeEditorWindow({
           if (!code) return { items: [] };
           try {
             const response = await axios.post('http://localhost:5000/api/suggestion', {
+            const response = await axios.post('http://localhost:5000/api/suggestion', {
               code,
               language: normalizeLang(selectedLanguageRef.current),
+              language: normalizeLang(selectedLanguageRef.current),
             });
+            let suggestion = response.data.suggestion || '';
             let suggestion = response.data.suggestion || '';
             if (!suggestion) return { items: [] };
             return {
@@ -472,12 +562,16 @@ export default function CodeEditorWindow({
                 },
               ],
               dispose: () => {},
+              dispose: () => {},
             };
           } catch (error) {
+            console.error('Error fetching suggestion:', error);
             console.error('Error fetching suggestion:', error);
             return { items: [] };
           }
         },
+        handleItemDidShow: () => {},
+        freeInlineCompletions: () => {},
         handleItemDidShow: () => {},
         freeInlineCompletions: () => {},
       });
@@ -487,6 +581,13 @@ export default function CodeEditorWindow({
   const registerHoverProvider = (monacoInstance) => {
     monacoInstance.languages.registerHoverProvider(language, {
       provideHover: (model, position) => {
+        const markers = monacoInstance.editor.getModelMarkers({ resource: model.uri });
+        const hovered = markers.find(
+          (marker) =>
+            marker.startLineNumber <= position.lineNumber &&
+            marker.endLineNumber >= position.lineNumber &&
+            marker.startColumn <= position.column &&
+            marker.endColumn >= position.column
         const markers = monacoInstance.editor.getModelMarkers({ resource: model.uri });
         const hovered = markers.find(
           (marker) =>
@@ -512,7 +613,15 @@ export default function CodeEditorWindow({
             },
             { value: fixLink },
           ],
+            {
+              value: `**${hovered.severity === monacoInstance.MarkerSeverity.Error ? 'Error' : 'Warning'}:** ${
+                hovered.message
+              }`,
+            },
+            { value: fixLink },
+          ],
         };
+      },
       },
     });
   };
@@ -540,10 +649,12 @@ export default function CodeEditorWindow({
       if (model) {
         setTimeout(() => {
           editor.trigger('keyboard', 'editor.action.inlineSuggest.trigger');
+          editor.trigger('keyboard', 'editor.action.inlineSuggest.trigger');
         }, 300);
       }
     });
     setTimeout(() => {
+      editor.trigger('keyboard', 'editor.action.inlineSuggest.trigger');
       editor.trigger('keyboard', 'editor.action.inlineSuggest.trigger');
     }, 1500);
   };
@@ -559,7 +670,14 @@ export default function CodeEditorWindow({
     const fileData = isAuthenticated ? file : loadFileLocally(file.id);
     if (fileData && fileData.content !== undefined) {
       setValue(fileData.content);
+    console.log('Loading file:', file);
+
+    const fileData = isAuthenticated ? file : loadFileLocally(file.id);
+    if (fileData && fileData.content !== undefined) {
+      setValue(fileData.content);
     } else {
+      setValue('');
+      await saveFileLocally(file.id, '');
       setValue('');
       await saveFileLocally(file.id, '');
       if (isAuthenticated) {
@@ -622,6 +740,10 @@ export default function CodeEditorWindow({
                   borderColor: '#374151',
                   boxShadow: '0 0 8px rgba(59,130,246,0.5)',
                   transition: 'all 0.3s ease',
+                  backgroundColor: '#1f2937',
+                  borderColor: '#374151',
+                  boxShadow: '0 0 8px rgba(59,130,246,0.5)',
+                  transition: 'all 0.3s ease',
                 }),
                 option: (base, state) => ({
                   ...base,
@@ -629,9 +751,14 @@ export default function CodeEditorWindow({
                   color: 'white',
                   cursor: 'pointer',
                   transition: 'background-color 0.3s ease',
+                  backgroundColor: state.isFocused ? '#2563eb' : '#1f2937',
+                  color: 'white',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.3s ease',
                 }),
                 singleValue: (base) => ({
                   ...base,
+                  color: 'white',
                   color: 'white',
                 }),
               }}
@@ -655,6 +782,10 @@ export default function CodeEditorWindow({
                   borderColor: '#374151',
                   boxShadow: '0 0 8px rgba(59,130,246,0.5)',
                   transition: 'all 0.3s ease',
+                  backgroundColor: '#1f2937',
+                  borderColor: '#374151',
+                  boxShadow: '0 0 8px rgba(59,130,246,0.5)',
+                  transition: 'all 0.3s ease',
                 }),
                 option: (base, state) => ({
                   ...base,
@@ -662,9 +793,14 @@ export default function CodeEditorWindow({
                   color: 'white',
                   cursor: 'pointer',
                   transition: 'background-color 0.3s ease',
+                  backgroundColor: state.isFocused ? '#2563eb' : '#1f2937',
+                  color: 'white',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.3s ease',
                 }),
                 singleValue: (base) => ({
                   ...base,
+                  color: 'white',
                   color: 'white',
                 }),
               }}
@@ -687,10 +823,13 @@ export default function CodeEditorWindow({
               fontFamily: "'Fira Code', monospace",
               fontLigatures: true,
               lineNumbers: 'on',
+              lineNumbers: 'on',
               minimap: { enabled: false },
               inlineSuggest: { enabled: true },
               tabCompletion: 'on',
+              tabCompletion: 'on',
               smoothScrolling: true,
+              cursorBlinking: 'phase',
               cursorBlinking: 'phase',
               cursorSmoothCaretAnimation: true,
             }}
@@ -704,6 +843,7 @@ export default function CodeEditorWindow({
           value={customInput}
           onChange={(e) => setCustomInput(e.target.value)}
           placeholder="Custom input"
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-5 py-4 text-gray-200 shadow-inner placeholder-gray-500 resize-y focus:outline-none focus:ring-4 focus:ring-cyan-500 transition duration-300"
           className="w-full bg-gray-800 border border-gray-700 rounded-lg px-5 py-4 text-gray-200 shadow-inner placeholder-gray-500 resize-y focus:outline-none focus:ring-4 focus:ring-cyan-500 transition duration-300"
           spellCheck={false}
         />
