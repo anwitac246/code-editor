@@ -41,7 +41,7 @@ export default function LoginPage() {
     setError('');
     try {
       await signInWithPopup(auth, googleProvider);
-      router.push('/');
+      router.push('/dashboard');
     } catch (err) {
       setError(err.message);
     }
@@ -67,7 +67,7 @@ export default function LoginPage() {
         <h1 className="text-4xl font-bold mb-4 font-mono">CodeCraft</h1>
         <p className="text-lg leading-relaxed text-white/90">
           Your personalized cloud-based code editor with real-time collaboration,
-          intelligent suggestions, and integrated terminal. Code faster, smarter,
+          intelligent suggestions, and integrated te rminal. Code faster, smarter,
           together — from anywhere.
         </p>
         <ul className="mt-6 list-disc pl-5 text-white/80 space-y-1">

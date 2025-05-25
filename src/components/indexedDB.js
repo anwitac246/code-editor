@@ -1,4 +1,3 @@
-// indexedDB.js
 import { openDB } from 'idb';
 
 const DB_NAME = 'fileDB';
@@ -14,20 +13,17 @@ async function getDB() {
   });
 }
 
-// For the editor: save file content using a key (e.g., file id)
 export async function saveFile(id, content) {
   const db = await getDB();
   await db.put(STORE_NAME, { id, data: content });
 }
 
-// For the editor: load file content by key
 export async function loadFile(id) {
   const db = await getDB();
   const item = await db.get(STORE_NAME, id);
   return item ? item.data : null;
 }
 
-// For file explorer: save a file or folder object
 export async function saveFileOrFolder(item) {
   const db = await getDB();
   await db.put(STORE_NAME, item);

@@ -1,7 +1,6 @@
-
-"use client"
-import { ChevronRightIcon, FileIcon, KebabHorizontalIcon } from "@primer/octicons-react";
-import { useState, useEffect, useRef } from "react";
+'use client';
+import { ChevronRightIcon, FileIcon, KebabHorizontalIcon } from '@primer/octicons-react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function FileTree({
   fileTree,
@@ -9,7 +8,10 @@ export default function FileTree({
   handleAddFile,
   handleAddFolder,
   handleDelete,
-  handleRename
+  handleRename,
+  renderFolderToggle,
+  itemClassName,
+  indentPx = 0,
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
@@ -21,21 +23,26 @@ export default function FileTree({
   });
   const [isRenaming, setIsRenaming] = useState({
     showInput: false,
-    name: "",
-    newName: "",
+    name: '',
+    newName: '',
     id: null,
   });
   const inputRef = useRef(null);
   const buttonRef = useRef(null);
 
   const handleRenameSubmit = () => {
-    if (isRenaming.id && isRenaming.newName && isRenaming.name !== isRenaming.newName && isRenaming.newName.trim() !== "") {
+    if (
+      isRenaming.id &&
+      isRenaming.newName &&
+      isRenaming.name !== isRenaming.newName &&
+      isRenaming.newName.trim() !== ''
+    ) {
       handleRename(isRenaming.id, isRenaming.newName);
     }
     setIsRenaming({
       showInput: false,
-      name: "",
-      newName: "",
+      name: '',
+      newName: '',
       id: null,
     });
   };
@@ -59,9 +66,9 @@ export default function FileTree({
   const handleSubmission = (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
-    const name = form.get("name");
+    const name = form.get('name');
 
-    if (name.trim() === "") return;
+    if (name.trim() === '') return;
 
     if (isCreating.isFolder) {
       handleAddFolder(isCreating.folderId, name);
@@ -75,18 +82,18 @@ export default function FileTree({
 
   const handleDropdownItemClick = (action, fileTreeId, fileTreeName) => {
     switch (action) {
-      case "newFile":
+      case 'newFile':
         setIsExpanded(true);
         setIsCreating({ isFolder: false, showInput: true, folderId: fileTreeId });
         break;
-      case "newFolder":
+      case 'newFolder':
         setIsExpanded(true);
         setIsCreating({ isFolder: true, showInput: true, folderId: fileTreeId });
         break;
-      case "rename":
+      case 'rename':
         setIsRenaming({ showInput: true, id: fileTreeId, name: fileTreeName });
         break;
-      case "delete":
+      case 'delete':
         handleDelete(fileTreeId);
         break;
       default:
@@ -94,18 +101,19 @@ export default function FileTree({
     }
   };
 
-  if (fileTree.type === "folder") {
+  if (fileTree.type === 'folder') {
     return (
-      <>
+      <div style={{ paddingLeft: `${indentPx}px` }}>
         <div
           onMouseOver={() => setShowOptions(true)}
           onMouseLeave={() => setShowOptions(false)}
-          className="relative text-xs flex select-none cursor-pointer items-center justify-between gap-6 py-1 px-2 pr-1 text-vsdark-5 rounded hover:bg-vsdark-4/20 hover:text-vsdark-6"
+          className={itemClassName({ isSelected: false })}
         >
-          <div className="flex items-center gap-1.5 flex-1" onClick={() => setIsExpanded(!isExpanded)}>
-            <span className={`${isExpanded ? "rotate-90" : ""} flex items-center`}>
-              <ChevronRightIcon size={12} />
-            </span>
+          <div
+            className="flex items-center gap-1.5 flex-1"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            <span className="flex items-center">{renderFolderToggle(isExpanded)}</span>
             <span className="-mt-[0.5px]">
               {isRenaming.showInput && isRenaming.id === fileTree.id ? (
                 <input
@@ -118,7 +126,7 @@ export default function FileTree({
                     setIsRenaming({ showInput: false, id: null });
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
+                    if (e.key === 'Enter') {
                       handleRenameSubmit();
                     }
                   }}
@@ -132,8 +140,9 @@ export default function FileTree({
             <button
               ref={buttonRef}
               onClick={handleKebabClick}
-              className={`p-1 rounded flex items-center justify-center hover:bg-vsdark-4/50 hover:text-vsdark-6 focus:bg-vsdark-4/50 focus:text-vsdark-6 ${showOptions || isDropdownOpen ? "visible" : "invisible"
-                }`}
+              className={`p-1 rounded flex items-center justify-center hover:bg-vsdark-4/50 hover:text-vsdark-6 focus:bg-vsdark-4/50 focus:text-vsdark-6 ${
+                showOptions || isDropdownOpen ? 'visible' : 'invisible'
+              }`}
             >
               <KebabHorizontalIcon size={10} />
             </button>
@@ -153,7 +162,11 @@ export default function FileTree({
             {isCreating.showInput && (
               <form onSubmit={handleSubmission} className="flex items-center w-full gap-1.5">
                 <span className="flex items-center justify-center text-vsdark-5">
-                  {isCreating.isFolder ? <ChevronRightIcon size={12} /> : <FileIcon size={12} />}
+                  {isCreating.isFolder ? (
+                    <ChevronRightIcon size={12} />
+                  ) : (
+                    <FileIcon size={12} />
+                  )}
                 </span>
                 <input
                   onBlur={() => setIsCreating({ ...isCreating, showInput: false })}
@@ -174,64 +187,69 @@ export default function FileTree({
                   handleRename={handleRename}
                   openFileInEditor={openFileInEditor}
                   handleDelete={handleDelete}
+                  renderFolderToggle={renderFolderToggle}
+                  itemClassName={itemClassName}
+                  indentPx={indentPx + 12}
                 />
               ) : null
             ))}
-
           </div>
         )}
-      </>
+      </div>
     );
   }
 
   return (
-    <div
-      onClick={() => openFileInEditor && openFileInEditor(fileTree)}
-      onMouseOver={() => setShowOptions(true)}
-      onMouseLeave={() => setShowOptions(false)}
-      className="relative text-xs flex items-center justify-between select-none cursor-pointer py-1 px-2 pr-1 text-vsdark-5 rounded hover:bg-vsdark-4/20 hover:text-vsdark-6"
-    >
-      <div className="flex items-center gap-1.5 flex-1">
-        <FileIcon size={12} />
-        <span className="-mt-[0.5px]">
-          {isRenaming.showInput && isRenaming.id === fileTree.id ? (
-            <input
-              ref={inputRef}
-              className="w-full h-full border-0 bg-black outline-0 px-0 py-1"
-              defaultValue={fileTree.name}
-              onChange={(e) => setIsRenaming({ ...isRenaming, newName: e.target.value })}
-              onBlur={() => {
-                handleRenameSubmit();
-                setIsRenaming({ showInput: false, id: null });
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
+    <div style={{ paddingLeft: `${indentPx}px` }}>
+      <div
+        onClick={() => openFileInEditor && openFileInEditor(fileTree)}
+        onMouseOver={() => setShowOptions(true)}
+        onMouseLeave={() => setShowOptions(false)}
+        className={itemClassName({ isSelected: false })}
+      >
+        <div className="flex items-center gap-1.5 flex-1">
+          <FileIcon size={12} />
+          <span className="-mt-[0.5px]">
+            {isRenaming.showInput && isRenaming.id === fileTree.id ? (
+              <input
+                ref={inputRef}
+                className="w-full h-full border-0 bg-black outline-0 px-0 py-1"
+                defaultValue={fileTree.name}
+                onChange={(e) => setIsRenaming({ ...isRenaming, newName: e.target.value })}
+                onBlur={() => {
                   handleRenameSubmit();
-                }
-              }}
-            />
-          ) : (
-            fileTree.name
-          )}
-        </span>
-      </div>
-      <div className="relative">
-        <button
-          ref={buttonRef}
-          onClick={handleKebabClick}
-          className={`p-1 rounded flex items-center justify-center hover:bg-vsdark-4/50 hover:text-vsdark-6 focus:bg-vsdark-4/50 focus:text-vsdark-6 ${showOptions || isDropdownOpen ? "visible" : "invisible"
+                  setIsRenaming({ showInput: false, id: null });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleRenameSubmit();
+                  }
+                }}
+              />
+            ) : (
+              fileTree.name
+            )}
+          </span>
+        </div>
+        <div className="relative">
+          <button
+            ref={buttonRef}
+            onClick={handleKebabClick}
+            className={`p-1 rounded flex items-center justify-center hover:bg-vsdark-4/50 hover:text-vsdark-6 focus:bg-vsdark-4/50 focus:text-vsdark-6 ${
+              showOptions || isDropdownOpen ? 'visible' : 'invisible'
             }`}
-        >
-          <KebabHorizontalIcon size={10} />
-        </button>
-        <DropdownMenu
-          isOpen={isDropdownOpen}
-          fileTreeId={fileTree.id}
-          fileTreeName={fileTree.name}
-          onClose={handleDropdownClose}
-          type="file"
-          onItemClick={handleDropdownItemClick}
-        />
+          >
+            <KebabHorizontalIcon size={10} />
+          </button>
+          <DropdownMenu
+            isOpen={isDropdownOpen}
+            fileTreeId={fileTree.id}
+            fileTreeName={fileTree.name}
+            onClose={handleDropdownClose}
+            type="file"
+            onItemClick={handleDropdownItemClick}
+          />
+        </div>
       </div>
     </div>
   );
@@ -248,11 +266,11 @@ function DropdownMenu({ isOpen, onClose, type, onItemClick, fileTreeId, fileTree
     };
 
     if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen, onClose]);
 
@@ -265,17 +283,20 @@ function DropdownMenu({ isOpen, onClose, type, onItemClick, fileTreeId, fileTree
   if (!isOpen) return null;
 
   return (
-    <div ref={dropdownRef} className="absolute -right-1 top-7 shadow-xl min-w-48 bg-vsdark-3 backdrop-blur-3xl z-10 rounded">
-      {type === "folder" && (
+    <div
+      ref={dropdownRef}
+      className="absolute -right-1 top-7 shadow-xl min-w-48 bg-vsdark-3 backdrop-blur-3xl z-10 rounded"
+    >
+      {type === 'folder' && (
         <div className="flex flex-col p-1.5 gap-1">
           <button
-            onClick={handleClick("newFile")}
+            onClick={handleClick('newFile')}
             className="w-full text-left px-3 py-1 text-vsdark-5 hover:bg-vsdark-4/30 hover:text-vsdark-6 rounded text-xs"
           >
             New File...
           </button>
           <button
-            onClick={handleClick("newFolder")}
+            onClick={handleClick('newFolder')}
             className="w-full text-left px-3 py-1 text-vsdark-5 hover:bg-vsdark-4/30 hover:text-vsdark-6 rounded text-xs"
           >
             New Folder...
@@ -283,20 +304,20 @@ function DropdownMenu({ isOpen, onClose, type, onItemClick, fileTreeId, fileTree
         </div>
       )}
 
-      {type === "folder" && <div className="border-t border-vsdark-4/30 mt-1" />}
+      {type === 'folder' && <div className="border-t border-vsdark-4/30 mt-1" />}
 
       <div className="flex flex-col p-1.5 gap-1">
         <button
-          onClick={handleClick("rename")}
+          onClick={handleClick('rename')}
           className="w-full text-left px-3 py-1 text-vsdark-5 hover:bg-vsdark-4/30 hover:text-vsdark-6 rounded text-xs"
         >
           Rename...
         </button>
         <button
-          onClick={handleClick("delete")}
+          onClick={handleClick('delete')}
           className="w-full text-left px-3 py-1 text-vsdark-5 hover:bg-vsdark-4/30 hover:text-vsdark-6 rounded text-xs"
         >
-          Delete {type === "folder" ? "Folder" : "File"}
+          Delete {type === 'folder' ? 'Folder' : 'File'}
         </button>
       </div>
     </div>

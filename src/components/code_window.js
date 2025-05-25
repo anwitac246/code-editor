@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
@@ -14,6 +13,7 @@ import Explorer from "./fileExplorer";
 import { saveFile, loadFile } from "./indexedDB"; 
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase-config";
+import { useRouter, useSearchParams } from "next/navigation";
 
 dotenv.config();
 
@@ -68,7 +68,8 @@ function detectLanguageFromFileName(fileName) {
 export default function CodeEditorWindow({
   onChange,
   initialLanguage = "javascript",
-  code = "Write your code here....",
+  code = "//Write your code here....",
+  projectId,
 }) {
 
   const [value, setValue] = useState(code);
@@ -80,58 +81,140 @@ export default function CodeEditorWindow({
   const [timeTaken, setTimeTaken] = useState("N/A");
   const [memoryUsed, setMemoryUsed] = useState("N/A");
   const [uid, setUid] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeEditorTabs, setActiveEditorTabs] = useState([]);
   const [selectedTabId, setSelectedTabId] = useState(null);
   const [currentFileId, setCurrentFileId] = useState(null);
-
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const selectedLanguageRef = useRef(language);
   const isCtrlEnterPressed = useKeyPress(["Ctrl", "Enter"]);
 
+  const [project, setProject] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const [guestFiles, setGuestFiles] = useState(new Map());
+
+  useEffect(() => {
+    if (!projectId) {
+      setProject(null);
+      setLoading(false);
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setProject(null);
+      setLoading(false);
+      return;
+    }
+
+    const fetchProject = async () => {
+      try {
+        const res = await axios.get(`/api/projects/${projectId}`);
+        setProject(res.data.project);
+      } catch (err) {
+        console.error("Failed to load project:", err);
+        setProject(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProject();
+  }, [projectId, isAuthenticated]);
+
   useEffect(() => {
     async function fetchDefault() {
-      const savedCode = await loadFile("currentFile");
-      if (savedCode !== null) {
-        setValue(savedCode);
-        setCurrentFileId("currentFile");
+      if (isAuthenticated) {
+    
+        const savedCode = await loadFile("currentFile");
+        if (savedCode !== null) {
+          setValue(savedCode);
+          setCurrentFileId("currentFile");
+        }
+      } else {
+
+        setValue(code);
+        setCurrentFileId("guest_default");
       }
     }
     fetchDefault();
-  }, []);
-   useEffect(() => {
+  }, [isAuthenticated, code]);
+
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) setUid(user.uid);
-      else setUid(null);
+      if (user) {
+        setUid(user.uid);
+        setIsAuthenticated(true);
+      } else {
+        setUid(null);
+        setIsAuthenticated(false);
+      }
     });
     return () => unsubscribe();
   }, []);
+
   useEffect(() => { selectedLanguageRef.current = language; }, [language]);
 
   const saveToMongoDB = async (fileId, fileName, content, lang) => {
+
+    if (!isAuthenticated || !uid) {
+      console.log("Guest mode: Skipping MongoDB save");
+      return;
+    }
+
     try {
       await axios.post('http://localhost:5001/api/saveFile', {
         fileName: fileName || fileId,
         content,
         language: lang,
-        uid
+        uid,
+        projectId
       });
       console.log(`File ${fileName || fileId} saved to MongoDB`);
     } catch (error) {
-      console.error('Error saving to MongoDB Secondary: MongoDB', error);
+      console.error('Error saving to MongoDB:', error);
     }
   };
 
-  const handleEditorChange = (newValue) => {
+  const saveFileLocally = async (fileId, content) => {
+    if (isAuthenticated) {
+ 
+      await saveFile(fileId, content);
+    } else {
+ 
+      setGuestFiles(prev => new Map(prev.set(fileId, content)));
+    }
+  };
+
+  const loadFileLocally = async (fileId) => {
+    if (isAuthenticated) {
+    
+      return await loadFile(fileId);
+    } else {
+      return guestFiles.get(fileId) || null;
+    }
+  };
+
+  const handleEditorChange = async (newValue) => {
     setValue(newValue);
     onChange && onChange("code", newValue);
+    
     if (currentFileId) {
-      saveFile(currentFileId, newValue);
-      saveToMongoDB(currentFileId, activeEditorTabs.find(tab => tab.id === currentFileId)?.name, newValue, language);
+   
+      await saveFileLocally(currentFileId, newValue);
+   
+      if (isAuthenticated) {
+        const fileName = activeEditorTabs.find(tab => tab.id === currentFileId)?.name;
+        saveToMongoDB(currentFileId, fileName, newValue, language);
+      }
     }
   };
 
   const handleLanguageChange = (selectedOption) => setLanguage(selectedOption.value);
+  
   const handleThemeChange = (selectedOption) => {
     const themeName = selectedOption.value;
     if (["light", "vs-dark"].includes(themeName)) {
@@ -312,24 +395,38 @@ export default function CodeEditorWindow({
       setLanguage(detectLanguageFromFileName(file.name));
     }
     console.log("Loading file:", file);
-    const savedContent = await loadFile(file.id);
+    
+    const savedContent = await loadFileLocally(file.id);
     if (savedContent !== null) {
       setValue(savedContent);
     } else {
       setValue("");
-      saveFile(file.id, "");
-      saveToMongoDB(file.id, file.name, "", language);
+      await saveFileLocally(file.id, "");
+    
+      if (isAuthenticated) {
+        saveToMongoDB(file.id, file.name, "", language);
+      }
     }
   };
 
   return (
     <div className="flex flex-col md:flex-row justify-center gap-6 p-6 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 min-h-screen text-gray-200">
+
+      {!isAuthenticated && (
+        <div className="fixed top-4 right-4 bg-yellow-600 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+          <div className="text-sm font-semibold">Guest Mode</div>
+          <div className="text-xs">Changes won't be saved permanently</div>
+        </div>
+      )}
+
       <Explorer
-      uid={uid}
+        uid={uid}
+        projectId={isAuthenticated ? projectId : null}
         onFileSelect={handleFileSelect}
         activeEditorTabs={activeEditorTabs}
         setActiveEditorTabs={setActiveEditorTabs}
         setSelectedTabId={setSelectedTabId}
+        isAuthenticated={isAuthenticated}
       />
 
       <div className="flex-1 md:w-[70%] flex flex-col">
