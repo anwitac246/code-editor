@@ -3,6 +3,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
+import JSZip from 'jszip';
 
 dotenv.config();
 
@@ -206,6 +207,117 @@ app.delete('/api/projects/:projectId', async (req, res) => {
   } catch (error) {
     console.error('Error deleting project:', error);
     res.status(500).json({ error: 'Failed to delete project', details: error.message });
+  }
+});
+
+
+app.get('/api/projects/:projectId/download', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { uid } = req.query;
+
+    console.log(`Download request - ProjectID: ${projectId}, UID: ${uid}`);
+
+    if (!projectId || !uid) {
+      return res.status(400).json({ 
+        message: 'Missing required parameters: projectId and uid' 
+      });
+    }
+
+
+    const fileTrees = db.collection('fileTrees');
+    const project = await fileTrees.findOne({
+      projectId: projectId,
+      uid: uid
+    });
+
+    if (!project) {
+      console.log(`Project not found - ProjectID: ${projectId}, UID: ${uid}`);
+      return res.status(404).json({ 
+        message: 'Project not found or  you do not have permission to access it' 
+      });
+    }
+
+    console.log(`Project found: ${project.name}`);
+
+
+    if (!project.fileTree || !project.fileTree.children) {
+      console.log('No files found in project');
+      return res.status(404).json({ 
+        message: 'No files found in this project' 
+      });
+    }
+
+
+    const zip = new JSZip();
+
+ 
+    function addToZip(node, currentPath = '') {
+      if (node.type === 'file') {
+ 
+        const filePath = currentPath ? `${currentPath}/${node.name}` : node.name;
+        const content = node.content || '';
+        
+        console.log(`Adding file: ${filePath}`);
+        zip.file(filePath, content);
+        
+      } else if (node.type === 'folder' && node.children) {
+
+        const folderPath = currentPath ? `${currentPath}/${node.name}` : node.name;
+        
+        console.log(`Processing folder: ${folderPath}`);
+
+        node.children.forEach(child => {
+          addToZip(child, folderPath);
+        });
+        
+
+        if (node.children.length === 0) {
+          zip.folder(folderPath);
+        }
+      }
+    }
+
+
+    if (project.fileTree.children && project.fileTree.children.length > 0) {
+      project.fileTree.children.forEach(child => {
+        addToZip(child);
+      });
+    } else {
+      return res.status(404).json({ 
+        message: 'No files found in this project' 
+      });
+    }
+
+    console.log('Generating ZIP file...');
+    const zipBuffer = await zip.generateAsync({ 
+      type: 'nodebuffer',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 }
+    });
+
+
+    const sanitizedName = project.name.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
+    const filename = `${sanitizedName}_project.zip`;
+
+    console.log(`Sending ZIP file: ${filename} (${zipBuffer.length} bytes)`);
+
+
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': zipBuffer.length
+    });
+
+
+    res.send(zipBuffer);
+
+  } catch (error) {
+    console.error('Error creating project download:', error);
+    res.status(500).json({ 
+      message: 'Failed to create project download',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
