@@ -1,19 +1,18 @@
 'use client';
-import React, { useState, useEffect, useRef } from "react";
-import Editor from "@monaco-editor/react";
-import Select from "react-select";
-import monacoThemes from "monaco-themes/themes/themelist";
-import { defineTheme } from "./themes";
-import { languageOptions } from "./language";
-import OutputSection from "./output";
-import axios from "axios";
-import useKeyPress from "@/hooks/keypress";
+import React, { useState, useEffect, useRef } from 'react';
+import Editor from '@monaco-editor/react';
+import Select from 'react-select';
+import monacoThemes from 'monaco-themes/themes/themelist';
+import { defineTheme } from './themes';
+import { languageOptions } from './language';
+import OutputSection from './output';
+import axios from 'axios';
+import useKeyPress from '@/hooks/keypress';
 import dotenv from 'dotenv';
-import Explorer from "./fileExplorer";
-import { saveFile, loadFile } from "./indexedDB"; 
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase-config";
-import { useRouter, useSearchParams } from "next/navigation";
+import Explorer from './fileExplorer';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/lib/firebase-config';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 dotenv.config();
 
@@ -22,64 +21,70 @@ const apiKey = process.env.NEXT_PUBLIC_JUDGE0_API_KEY;
 const customStyles = {
   control: (base) => ({
     ...base,
-    backgroundColor: "#111",
-    color: "#fff",
-    border: "1px solid #444",
-    boxShadow: "3px 3px 0px rgba(0,0,0,0.25)",
-    transition: "all 0.3s ease",
+    backgroundColor: '#111',
+    color: '#fff',
+    border: '1px solid #444',
+    boxShadow: '3px 3px 0px rgba(0,0,0,0.25)',
+    transition: 'all 0.3s ease',
   }),
   singleValue: (base) => ({
     ...base,
-    color: "#fff",
+    color: '#fff',
   }),
   menu: (base) => ({
     ...base,
-    backgroundColor: "#111",
+    backgroundColor: '#111',
   }),
   option: (base, state) => ({
     ...base,
-    backgroundColor: state.isFocused ? "#333" : "#111",
-    color: "#fff",
-    cursor: "pointer",
-    transition: "background-color 0.2s ease",
+    backgroundColor: state.isFocused ? '#333' : '#111',
+    color: '#fff',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s ease',
   }),
 };
 
 const normalizeLang = (langStr) => {
-  if (!langStr) return "";
+  if (!langStr) return '';
   const lower = langStr.toLowerCase();
-  if (lower === "c++") return "cpp";
+  if (lower === 'c++') return 'cpp';
   return lower;
 };
 
-function detectLanguageFromFileName(fileName) {
+const detectLanguageFromFileName = (fileName) => {
   const ext = fileName.split('.').pop();
   switch (ext) {
-    case 'js': return 'javascript';
-    case 'py': return 'python';
-    case 'cpp': return 'cpp';
-    case 'java': return 'java';
-    case 'html': return 'html';
-    case 'css': return 'css';
-    default: return 'plaintext';
+    case 'js':
+      return 'javascript';
+    case 'py':
+      return 'python';
+    case 'cpp':
+      return 'cpp';
+    case 'java':
+      return 'java';
+    case 'html':
+      return 'html';
+    case 'css':
+      return 'css';
+    default:
+      return 'plaintext';
   }
-}
+};
 
 export default function CodeEditorWindow({
   onChange,
-  initialLanguage = "javascript",
-  code = "//Write your code here....",
+  initialLanguage = 'javascript',
+  code = '//Write your code here....',
   projectId,
 }) {
-
   const [value, setValue] = useState(code);
   const [language, setLanguage] = useState(initialLanguage);
-  const [theme, setTheme] = useState("vs-dark");
-  const [customInput, setCustomInput] = useState("");
-  const [output, setOutput] = useState("");
-  const [status, setStatus] = useState("Pending");
-  const [timeTaken, setTimeTaken] = useState("N/A");
-  const [memoryUsed, setMemoryUsed] = useState("N/A");
+  const [theme, setTheme] = useState('vs-dark');
+  const [customInput, setCustomInput] = useState('');
+  const [output, setOutput] = useState('');
+  const [status, setStatus] = useState('Pending');
+  const [timeTaken, setTimeTaken] = useState('N/A');
+  const [memoryUsed, setMemoryUsed] = useState('N/A');
   const [uid, setUid] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeEditorTabs, setActiveEditorTabs] = useState([]);
@@ -90,7 +95,7 @@ export default function CodeEditorWindow({
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const selectedLanguageRef = useRef(language);
-  const isCtrlEnterPressed = useKeyPress(["Ctrl", "Enter"]);
+  const isCtrlEnterPressed = useKeyPress(['Ctrl', 'Enter']);
 
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -112,36 +117,20 @@ export default function CodeEditorWindow({
 
     const fetchProject = async () => {
       try {
-        const res = await axios.get(`/api/projects/${projectId}`);
-        setProject(res.data.project);
+        const res = await axios.get(`http://localhost:5001/api/getFileTree?uid=${uid}&projectId=${projectId}`);
+        setProject({ projectId, fileTree: res.data });
       } catch (err) {
-        console.error("Failed to load project:", err);
+        console.error('Failed to load project:', err);
         setProject(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProject();
-  }, [projectId, isAuthenticated]);
-
-  useEffect(() => {
-    async function fetchDefault() {
-      if (isAuthenticated) {
-    
-        const savedCode = await loadFile("currentFile");
-        if (savedCode !== null) {
-          setValue(savedCode);
-          setCurrentFileId("currentFile");
-        }
-      } else {
-
-        setValue(code);
-        setCurrentFileId("guest_default");
-      }
+    if (uid) {
+      fetchProject();
     }
-    fetchDefault();
-  }, [isAuthenticated, code]);
+  }, [projectId, isAuthenticated, uid]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -151,29 +140,52 @@ export default function CodeEditorWindow({
       } else {
         setUid(null);
         setIsAuthenticated(false);
+        setGuestFiles(
+          new Map([
+            [
+              'sample-js',
+              {
+                id: 'sample-js',
+                name: 'sample.js',
+                content: '// Welcome to the Code Editor!\n// You\'re in guest mode - changes won\'t be saved permanently.\n\nconsole.log("Hello, World!");\n\n// Try writing some code here!',
+                language: 'javascript',
+              },
+            ],
+            [
+              'sample-py',
+              {
+                id: 'sample-py',
+                name: 'sample.py',
+                content: '# Welcome to the Code Editor!\n# You\'re in guest mode - changes won\'t be saved permanently.\n\nprint("Hello, World!")\n\n# Try writing some Python code here!',
+                language: 'python',
+              },
+            ],
+          ])
+        );
       }
     });
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => { selectedLanguageRef.current = language; }, [language]);
+  useEffect(() => {
+    selectedLanguageRef.current = language;
+  }, [language]);
 
-  const saveToMongoDB = async (fileId, fileName, content, lang) => {
-
+  const saveToMongoDB = async (fileId, content, lang) => {
     if (!isAuthenticated || !uid) {
-      console.log("Guest mode: Skipping MongoDB save");
+      console.log('Guest mode: Skipping MongoDB save');
       return;
     }
 
     try {
       await axios.post('http://localhost:5001/api/saveFile', {
-        fileName: fileName || fileId,
+        fileId,
         content,
         language: lang,
         uid,
-        projectId
+        projectId,
       });
-      console.log(`File ${fileName || fileId} saved to MongoDB`);
+      console.log(`File ${fileId} saved to MongoDB`);
     } catch (error) {
       console.error('Error saving to MongoDB:', error);
     }
@@ -181,18 +193,27 @@ export default function CodeEditorWindow({
 
   const saveFileLocally = async (fileId, content) => {
     if (isAuthenticated) {
- 
-      await saveFile(fileId, content);
+      return;
     } else {
- 
-      setGuestFiles(prev => new Map(prev.set(fileId, content)));
+      setGuestFiles((prev) => new Map(prev.set(fileId, { ...prev.get(fileId), content })));
     }
   };
 
-  const loadFileLocally = async (fileId) => {
+  const loadFileLocally = (fileId) => {
     if (isAuthenticated) {
-    
-      return await loadFile(fileId);
+      const findFile = (tree) => {
+        if (tree.id === fileId && tree.type === 'file') {
+          return tree;
+        }
+        if (tree.children) {
+          for (const child of tree.children) {
+            const found = findFile(child);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      return project?.fileTree ? findFile(project.fileTree) : null;
     } else {
       return guestFiles.get(fileId) || null;
     }
@@ -200,24 +221,27 @@ export default function CodeEditorWindow({
 
   const handleEditorChange = async (newValue) => {
     setValue(newValue);
-    onChange && onChange("code", newValue);
-    
+    onChange && onChange('code', newValue);
+
     if (currentFileId) {
-   
       await saveFileLocally(currentFileId, newValue);
-   
+
       if (isAuthenticated) {
-        const fileName = activeEditorTabs.find(tab => tab.id === currentFileId)?.name;
-        saveToMongoDB(currentFileId, fileName, newValue, language);
+        saveToMongoDB(currentFileId, newValue, language);
       }
     }
   };
 
-  const handleLanguageChange = (selectedOption) => setLanguage(selectedOption.value);
-  
+  const handleLanguageChange = (selectedOption) => {
+    setLanguage(selectedOption.value);
+    if (currentFileId && isAuthenticated) {
+      saveToMongoDB(currentFileId, value, selectedOption.value);
+    }
+  };
+
   const handleThemeChange = (selectedOption) => {
     const themeName = selectedOption.value;
-    if (["light", "vs-dark"].includes(themeName)) {
+    if (['light', 'vs-dark'].includes(themeName)) {
       setTheme(themeName);
     } else {
       defineTheme(themeName).then(() => setTheme(themeName));
@@ -226,22 +250,21 @@ export default function CodeEditorWindow({
 
   const handleRunCode = async () => {
     try {
-      setStatus("Running...");
-      setTimeTaken("N/A");
-      setMemoryUsed("N/A");
+      setStatus('Running...');
+      setTimeTaken('N/A');
+      setMemoryUsed('N/A');
       const submissionResponse = await axios.post(
-        "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=false&fields=*",
+        'https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=false&fields=*',
         {
           source_code: value,
-          language_id:
-            languageOptions.find((opt) => opt.value === language)?.id || 63,
+          language_id: languageOptions.find((opt) => opt.value === language)?.id || 63,
           stdin: customInput,
         },
         {
           headers: {
-            "Content-Type": "application/json",
-            "x-rapidapi-host": "judge0-ce.p.rapidapi.com",
-            "x-rapidapi-key": apiKey,
+            'Content-Type': 'application/json',
+            'x-rapidapi-host': 'judge0-ce.p.rapidapi.com',
+            'x-rapidapi-key': apiKey,
           },
         }
       );
@@ -251,21 +274,21 @@ export default function CodeEditorWindow({
           `https://judge0-ce.p.rapidapi.com/submissions/${token}?base64_encoded=false&fields=*`,
           {
             headers: {
-              "x-rapidapi-host": "judge0-ce.p.rapidapi.com",
-              "x-rapidapi-key": apiKey,
+              'x-rapidapi-host': 'judge0-ce.p.rapidapi.com',
+              'x-rapidapi-key': apiKey,
             },
           }
         );
         const result = resultResponse.data;
-        setOutput(result.stdout || result.stderr || "No output.");
+        setOutput(result.stdout || result.stderr || 'No output.');
         setStatus(result.status.description);
-        setTimeTaken(result.time || "N/A");
-        setMemoryUsed(result.memory || "N/A");
+        setTimeTaken(result.time || 'N/A');
+        setMemoryUsed(result.memory || 'N/A');
       };
       setTimeout(fetchResult, 1000);
     } catch (error) {
-      setOutput("Error: " + error.message);
-      setStatus("Error");
+      setOutput('Error: ' + error.message);
+      setStatus('Error');
     }
   };
 
@@ -277,24 +300,27 @@ export default function CodeEditorWindow({
 
   const handleBugFix = async () => {
     try {
-      setStatus("Fixing code...");
-      const response = await axios.post("http://localhost:5000/api/bugfix", {
+      setStatus('Fixing code...');
+      const response = await axios.post('http://localhost:5000/api/bugfix', {
         code: value,
-        language: normalizeLang(language)
+        language: normalizeLang(language),
       });
       const fixedCode = response.data.fixed_code;
       if (fixedCode) {
         setValue(fixedCode);
-        setOutput("Bug fix applied.");
-        setStatus("Fixed");
+        setOutput('Bug fix applied.');
+        setStatus('Fixed');
+        if (currentFileId && isAuthenticated) {
+          saveToMongoDB(currentFileId, fixedCode, language);
+        }
       } else {
-        setOutput("No fix available.");
-        setStatus("No fix");
+        setOutput('No fix available.');
+        setStatus('No fix');
       }
     } catch (error) {
-      console.error("Error fixing code:", error);
-      setOutput("Error fixing code: " + error.message);
-      setStatus("Error");
+      console.error('Error fixing code:', error);
+      setOutput('Error fixing code: ' + error.message);
+      setStatus('Error');
     }
   };
 
@@ -306,11 +332,11 @@ export default function CodeEditorWindow({
           const code = model.getValue();
           if (!code) return { items: [] };
           try {
-            const response = await axios.post("http://localhost:5000/api/suggestion", {
+            const response = await axios.post('http://localhost:5000/api/suggestion', {
               code,
-              language: normalizeLang(selectedLanguageRef.current)
+              language: normalizeLang(selectedLanguageRef.current),
             });
-            let suggestion = response.data.suggestion || "";
+            let suggestion = response.data.suggestion || '';
             if (!suggestion) return { items: [] };
             return {
               items: [
@@ -324,15 +350,15 @@ export default function CodeEditorWindow({
                   ),
                 },
               ],
-              dispose: () => { },
+              dispose: () => {},
             };
           } catch (error) {
-            console.error("Error fetching suggestion:", error);
+            console.error('Error fetching suggestion:', error);
             return { items: [] };
           }
         },
-        handleItemDidShow: () => { },
-        freeInlineCompletions: () => { },
+        handleItemDidShow: () => {},
+        freeInlineCompletions: () => {},
       });
     });
   };
@@ -340,12 +366,13 @@ export default function CodeEditorWindow({
   const registerHoverProvider = (monacoInstance) => {
     monacoInstance.languages.registerHoverProvider(language, {
       provideHover: (model, position) => {
-        const markers = monaco.editor.getModelMarkers({ resource: model.uri });
-        const hovered = markers.find(marker =>
-          marker.startLineNumber <= position.lineNumber &&
-          marker.endLineNumber >= position.lineNumber &&
-          marker.startColumn <= position.column &&
-          marker.endColumn >= position.column
+        const markers = monacoInstance.editor.getModelMarkers({ resource: model.uri });
+        const hovered = markers.find(
+          (marker) =>
+            marker.startLineNumber <= position.lineNumber &&
+            marker.endLineNumber >= position.lineNumber &&
+            marker.startColumn <= position.column &&
+            marker.endColumn >= position.column
         );
         if (!hovered) return null;
         const fixLink = `[Fix Bug](command:openFixDialog)`;
@@ -357,11 +384,15 @@ export default function CodeEditorWindow({
             hovered.endColumn
           ),
           contents: [
-            { value: `**${hovered.severity === monaco.MarkerSeverity.Error ? "Error" : "Warning"}:** ${hovered.message}` },
-            { value: fixLink }
-          ]
+            {
+              value: `**${hovered.severity === monacoInstance.MarkerSeverity.Error ? 'Error' : 'Warning'}:** ${
+                hovered.message
+              }`,
+            },
+            { value: fixLink },
+          ],
         };
-      }
+      },
     });
   };
 
@@ -374,18 +405,20 @@ export default function CodeEditorWindow({
     editor.addAction({
       id: 'openFixDialog',
       label: 'Fix Code',
-      run: () => { handleBugFix(); }
+      run: () => {
+        handleBugFix();
+      },
     });
     editor.onDidChangeModelContent(() => {
       const model = editor.getModel();
       if (model) {
         setTimeout(() => {
-          editor.trigger("keyboard", "editor.action.inlineSuggest.trigger");
+          editor.trigger('keyboard', 'editor.action.inlineSuggest.trigger');
         }, 300);
       }
     });
     setTimeout(() => {
-      editor.trigger("keyboard", "editor.action.inlineSuggest.trigger");
+      editor.trigger('keyboard', 'editor.action.inlineSuggest.trigger');
     }, 1500);
   };
 
@@ -394,24 +427,27 @@ export default function CodeEditorWindow({
     if (file.name) {
       setLanguage(detectLanguageFromFileName(file.name));
     }
-    console.log("Loading file:", file);
-    
-    const savedContent = await loadFileLocally(file.id);
-    if (savedContent !== null) {
-      setValue(savedContent);
+    console.log('Loading file:', file);
+
+    const fileData = isAuthenticated ? file : loadFileLocally(file.id);
+    if (fileData && fileData.content !== undefined) {
+      setValue(fileData.content);
     } else {
-      setValue("");
-      await saveFileLocally(file.id, "");
-    
+      setValue('');
+      await saveFileLocally(file.id, '');
       if (isAuthenticated) {
-        saveToMongoDB(file.id, file.name, "", language);
+        saveToMongoDB(file.id, '', language);
       }
     }
+
+    if (!activeEditorTabs.some((tab) => tab.id === file.id)) {
+      setActiveEditorTabs([...activeEditorTabs, { id: file.id, name: file.name, data: file.content || '' }]);
+    }
+    setSelectedTabId(file.id);
   };
 
   return (
     <div className="flex flex-col md:flex-row justify-center gap-6 p-6 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 min-h-screen text-gray-200">
-
       {!isAuthenticated && (
         <div className="fixed top-4 right-4 bg-yellow-600 text-white px-4 py-2 rounded-lg shadow-lg z-50">
           <div className="text-sm font-semibold">Guest Mode</div>
@@ -441,21 +477,21 @@ export default function CodeEditorWindow({
                 ...customStyles,
                 control: (base) => ({
                   ...base,
-                  backgroundColor: "#1f2937",
-                  borderColor: "#374151",
-                  boxShadow: "0 0 8px rgba(59,130,246,0.5)",
-                  transition: "all 0.3s ease",
+                  backgroundColor: '#1f2937',
+                  borderColor: '#374151',
+                  boxShadow: '0 0 8px rgba(59,130,246,0.5)',
+                  transition: 'all 0.3s ease',
                 }),
                 option: (base, state) => ({
                   ...base,
-                  backgroundColor: state.isFocused ? "#2563eb" : "#1f2937",
-                  color: "white",
-                  cursor: "pointer",
-                  transition: "background-color 0.3s ease",
+                  backgroundColor: state.isFocused ? '#2563eb' : '#1f2937',
+                  color: 'white',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.3s ease',
                 }),
                 singleValue: (base) => ({
                   ...base,
-                  color: "white",
+                  color: 'white',
                 }),
               }}
             />
@@ -474,21 +510,21 @@ export default function CodeEditorWindow({
                 ...customStyles,
                 control: (base) => ({
                   ...base,
-                  backgroundColor: "#1f2937",
-                  borderColor: "#374151",
-                  boxShadow: "0 0 8px rgba(59,130,246,0.5)",
-                  transition: "all 0.3s ease",
+                  backgroundColor: '#1f2937',
+                  borderColor: '#374151',
+                  boxShadow: '0 0 8px rgba(59,130,246,0.5)',
+                  transition: 'all 0.3s ease',
                 }),
                 option: (base, state) => ({
                   ...base,
-                  backgroundColor: state.isFocused ? "#2563eb" : "#1f2937",
-                  color: "white",
-                  cursor: "pointer",
-                  transition: "background-color 0.3s ease",
+                  backgroundColor: state.isFocused ? '#2563eb' : '#1f2937',
+                  color: 'white',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.3s ease',
                 }),
                 singleValue: (base) => ({
                   ...base,
-                  color: "white",
+                  color: 'white',
                 }),
               }}
               onChange={handleThemeChange}
@@ -509,12 +545,12 @@ export default function CodeEditorWindow({
               fontSize: 16,
               fontFamily: "'Fira Code', monospace",
               fontLigatures: true,
-              lineNumbers: "on",
+              lineNumbers: 'on',
               minimap: { enabled: false },
               inlineSuggest: { enabled: true },
-              tabCompletion: "on",
+              tabCompletion: 'on',
               smoothScrolling: true,
-              cursorBlinking: "phase",
+              cursorBlinking: 'phase',
               cursorSmoothCaretAnimation: true,
             }}
           />
@@ -527,8 +563,7 @@ export default function CodeEditorWindow({
           value={customInput}
           onChange={(e) => setCustomInput(e.target.value)}
           placeholder="Custom input"
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-5 py-4 text-gray-200 shadow-inner placeholder-gray-500 resize-y
-                     focus:outline-none focus:ring-4 focus:ring-cyan-500 transition duration-300"
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-5 py-4 text-gray-200 shadow-inner placeholder-gray-500 resize-y focus:outline-none focus:ring-4 focus:ring-cyan-500 transition duration-300"
           spellCheck={false}
         />
 
