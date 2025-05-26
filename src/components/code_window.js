@@ -48,7 +48,7 @@ const normalizeLang = (langStr) => {
   const lower = langStr.toLowerCase();
   if (lower.includes('c++') || lower === 'cpp') return 'cpp';
   if (lower.includes('c#') || lower === 'csharp') return 'csharp';
-  return lower.replace(/-[^ ]+/, ''); // Remove version suffix (e.g., python-3.8 -> python)
+  return lower.replace(/-[^ ]+/, ''); 
 };
 
 const detectLanguageFromFileName = (fileName) => {
@@ -61,13 +61,13 @@ const detectLanguageFromFileName = (fileName) => {
     case 'tsx':
       return 'typescript-3.7';
     case 'py':
-      return 'python-3.8'; // Default to Python 3.8
+      return 'python-3.8'; 
     case 'cpp':
     case 'cxx':
     case 'cc':
-      return 'cpp-gcc9'; // Default to GCC 9
+      return 'cpp-gcc9'; 
     case 'c':
-      return 'c-gcc9'; // Default to GCC 9
+      return 'c-gcc9'; 
     case 'java':
       return 'java-openjdk13';
     case 'cs':
