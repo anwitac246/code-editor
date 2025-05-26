@@ -95,7 +95,7 @@ function Explorer({
       }
 
       try {
-        const res = await axios.get('http://localhost:5001/api/getFileTree', {
+        const res = await axios.get('/api/getFileTree', {
           params: { uid, projectId },
         });
 
@@ -126,7 +126,7 @@ function Explorer({
     }
 
     try {
-      const response = await axios.post('http://localhost:5001/api/saveFileTree', {
+      const response = await axios.post('/api/saveFileTree', {
         fileTree: updatedTree,
         uid,
         projectId,

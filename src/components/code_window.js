@@ -275,7 +275,7 @@ export default function CodeEditorWindow({
 
     const fetchProject = async () => {
       try {
-        const res = await axios.get(`http://localhost:5001/api/getFileTree?uid=${uid}&projectId=${projectId}`);
+        const res = await axios.get(`/api/getFileTree?uid=${uid}&projectId=${projectId}`);
         setProject({ projectId, fileTree: res.data });
       } catch (err) {
         console.error('Failed to load project:', err);
@@ -314,7 +314,7 @@ export default function CodeEditorWindow({
     }
 
     try {
-      await axios.post('http://localhost:5001/api/saveFile', {
+      await axios.post('/api/saveFile', {
         fileId,
         content,
         language: lang,
@@ -422,7 +422,7 @@ export default function CodeEditorWindow({
   const handleBugFix = async () => {
     try {
       setStatus('Fixing code...');
-      const response = await axios.post('http://localhost:5000/api/bugfix', {
+      const response = await axios.post('/api/bugfix', {
         code: value,
         language: normalizeLang(language),
       });
@@ -453,7 +453,7 @@ export default function CodeEditorWindow({
           const code = model.getValue();
           if (!code) return { items: [] };
           try {
-            const response = await axios.post('http://localhost:5000/api/suggestion', {
+            const response = await axios.post('/api/suggestion', {
               code,
               language: normalizeLang(selectedLanguageRef.current),
             });
