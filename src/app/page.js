@@ -62,7 +62,7 @@ function HomeContent() {
     setDeleteLoading(true);
     try {
       const response = await axios.delete(
-        `/api/projects/${projectId}?uid=${user.uid}`
+        `pages/api/projects/${projectId}?uid=${user.uid}`
       );
       console.log(`Project deleted: projectId=${projectId}`, response.data);
       alert('Project deleted successfully');
