@@ -530,7 +530,7 @@ export default function CodeEditorWindow({
         handleBugFix();
       },
     });
-    // Add Ctrl+Enter keybinding
+  
     editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.Enter, () => {
       console.log('Ctrl+Enter triggered');
       handleRunCode();
@@ -573,7 +573,6 @@ export default function CodeEditorWindow({
     setSelectedTabId(file.id);
   };
 
-  // Map language value to Monaco Editor language
   const getMonacoLanguage = () => {
     const selectedLang = languageOptions.find((opt) => opt.value === language);
     return selectedLang ? selectedLang.monacoLanguage : 'plaintext';
@@ -729,7 +728,7 @@ export default function CodeEditorWindow({
           className="w-full bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg px-6 py-3 font-semibold transition-transform duration-300 transform hover:scale-105 shadow-lg"
           onClick={handleRunCode}
         >
-          Run (Ctrl+Enter)
+          Run
         </button>
         <button
           className="w-full bg-green-600 hover:bg-green-700 text-white rounded-lg px-6 py-3 font-semibold transition-transform duration-300 transform hover:scale-105 shadow-lg"
