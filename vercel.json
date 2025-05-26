@@ -1,7 +1,7 @@
 {
   "functions": {
     "api-python/*.py": {
-      "runtime": "@vercel/python"
+      "runtime": "now-python@0.5.0"
     },
     "pages/api/*.js": {
       "runtime": "nodejs18.x"
