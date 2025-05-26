@@ -2,9 +2,6 @@
   "functions": {
     "api-python/*.py": {
       "runtime": "now-python@0.5.0"
-    },
-    "pages/api/*.js": {
-      "runtime": "nodejs18.x"
     }
   },
   "routes": [
