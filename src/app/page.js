@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect ,Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase-config';
@@ -8,18 +8,18 @@ import axios from 'axios';
 import { FiTrash2, FiLogOut } from 'react-icons/fi';
 import { FaSpinner } from 'react-icons/fa';
 
-export default function Home() {
-  const [user, setUser] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+function HomeContent() {
+  const [user, setUser] = React.useState(null);
+  const [deleteLoading, setDeleteLoading] = React.useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams.get('projectId');
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log('Auth state changed:', user ? `User logged in: ${user.uid}` : 'No user');
-      setUser(user);
-      if (user && !projectId) {
+  React.useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+      console.log('Auth state changed:', authUser ? `User logged in: ${authUser.uid}` : 'No user');
+      setUser(authUser);
+      if (authUser && !projectId) {
         console.log('User authenticated, redirecting to /dashboard');
         router.push('/dashboard');
       }
@@ -79,18 +79,15 @@ export default function Home() {
     }
   };
 
-
   if (!user) {
     return (
       <div className="relative flex flex-col h-screen bg-gradient-to-br from-gray-900 via-indigo-900 to-purple-900 overflow-hidden">
- 
         <div className="absolute inset-0 pointer-events-none">
           <div className="animate-particle bg-white/10 w-1 h-1 rounded-full absolute top-1/4 left-1/4"></div>
           <div className="animate-particle-delayed bg-white/10 w-1 h-1 rounded-full absolute top-3/4 left-3/4"></div>
           <div className="animate-particle bg-white/5 w-2 h-2 rounded-full absolute top-1/2 left-1/3"></div>
         </div>
 
-     
         <header className="px-6 py-4 bg-gray-900/30 backdrop-blur-lg border-b border-gray-700/50 flex items-center justify-between sticky top-0 z-10">
           <h1 className="text-3xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-purple-500 animate-pulse-slow">
             CodeCraft
@@ -104,7 +101,7 @@ export default function Home() {
           </button>
         </header>
 
-        <main className="flex-1 flex items-center justify-center text-white px-4">
+=        <main className="flex-1 flex items-center justify-center text-white px-4">
           <div className="text-center max-w-2xl animate-fade-in-up">
             <h1 className="text-5xl md:text-6xl font-extrabold mb-6 leading-tight bg-clip-text text-transparent bg-gradient-to-r from-teal-400 via-indigo-400 to-purple-400">
               Unleash Your Code with CodeCraft
@@ -132,42 +129,9 @@ export default function Home() {
             </div>
           </div>
         </main>
-
-
-        <style jsx>{`
-          @keyframes particle {
-            0% { transform: translateY(0); opacity: 0.8; }
-            100% { transform: translateY(-100vh); opacity: 0; }
-          }
-          @keyframes particleDelayed {
-            0% { transform: translateY(0); opacity: 0.8; }
-            100% { transform: translateY(100vh); opacity: 0; }
-          }
-          @keyframes pulseSlow {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.8; }
-          }
-          .animate-particle {
-            animation: particle 10s linear infinite;
-          }
-          .animate-particle-delayed {
-            animation: particleDelayed 12s linear infinite;
-          }
-          .animate-pulse-slow {
-            animation: pulseSlow 4s ease-in-out infinite;
-          }
-          .animate-fade-in-up {
-            animation: fadeInUp 0.8s ease-out;
-          }
-          @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-        `}</style>
       </div>
     );
   }
-
 
   if (projectId) {
     return (
@@ -184,6 +148,24 @@ export default function Home() {
             >
               <FiLogOut size={16} />
               <span>Logout</span>
+              <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </button>
+            <button
+              onClick={handleDeleteProject}
+              disabled={deleteLoading}
+              className={`relative group text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 flex items-center gap-2 ${
+                deleteLoading
+                  ? 'bg-gray-600 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600'
+              }`}
+              aria-label="Delete Project"
+            >
+              {deleteLoading ? (
+                <FaSpinner className="animate-spin" size={16} />
+              ) : (
+                <FiTrash2 size={16} />
+              )}
+              <span>{deleteLoading ? 'Deleting...' : 'Delete Project'}</span>
               <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </button>
           </div>
@@ -218,5 +200,50 @@ export default function Home() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center text-gray-200">
+          <FaSpinner className="inline-block text-4xl animate-spin mr-4" />
+          Loading CodeCraft...
+        </div>
+      }
+    >
+      <HomeContent />
+      <style jsx>{`
+        @keyframes particle {
+          0% { transform: translateY(0); opacity: 0.8; }
+          100% { transform: translateY(-100vh); opacity: 0; }
+        }
+        @keyframes particleDelayed {
+          0% { transform: translateY(0); opacity: 0.8; }
+          100% { transform: translateY(100vh); opacity: 0; }
+        }
+        @keyframes pulseSlow {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.8; }
+        }
+        .animate-particle {
+          animation: particle 10s linear infinite;
+        }
+        .animate-particle-delayed {
+          animation: particleDelayed 12s linear infinite;
+        }
+        .animate-pulse-slow {
+          animation: pulseSlow 4s ease-in-out infinite;
+        }
+        .animate-fade-in-up {
+          animation: fadeInUp 0.8s ease-out;
+        }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </Suspense>
   );
 }

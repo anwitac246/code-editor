@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase-config';
@@ -331,8 +331,9 @@ export default function Dashboard() {
   };
 
   return (
+    
     <div className="min-h-screen bg-gradient-to-tr from-[#0f172a] to-[#1e293b] text-white p-8 flex flex-col relative">
-      {/* Notification */}
+     
       {notification && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-3 max-w-md ${
           notification.type === 'success' ? 'bg-green-600' : 
