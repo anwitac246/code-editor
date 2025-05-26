@@ -122,7 +122,7 @@ export default function Dashboard() {
     setCreateLoading(true);
 
     try {
-      const res = await axios.post('/api/projects', {
+      const res = await axios.post('/api/projects/index.js', {
         name: newProject.name.trim(),
         description: newProject.description.trim(),
         uid,
