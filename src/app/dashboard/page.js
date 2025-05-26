@@ -54,7 +54,7 @@ export default function Dashboard() {
 
     const fetchProjects = async () => {
       try {
-        const res = await axios.get(`/api/projects?uid=${uid}`);
+        const res = await axios.get(`pages/api/projects?uid=${uid}`);
         console.log('Projects response:', res.data);
         setProjects(res.data.projects || []);
       } catch (e) {
@@ -122,7 +122,7 @@ export default function Dashboard() {
     setCreateLoading(true);
 
     try {
-      const res = await axios.post('/api/projects/index.js', {
+      const res = await axios.post('pages/api/projects/index.js', {
         name: newProject.name.trim(),
         description: newProject.description.trim(),
         uid,
@@ -162,7 +162,7 @@ export default function Dashboard() {
     setDeleteLoading(true);
     try {
       const response = await axios.delete(
-        `/api/projects/${projectId}?uid=${uid}`
+        `pages/api/projects/${projectId}?uid=${uid}`
       );
       console.log(`Project deleted: projectId=${projectId}`, response.data);
       setProjects((prev) => prev.filter((p) => p.projectId !== projectId));
@@ -209,7 +209,7 @@ export default function Dashboard() {
     console.log('Making download request...');
     
     const response = await axios.get(
-      `/api/projects/${projectId}/download?uid=${uid}`,
+      `pages/api/projects/${projectId}/download?uid=${uid}`,
       {
         responseType: 'blob',
         onDownloadProgress: (progressEvent) => {
