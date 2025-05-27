@@ -15,7 +15,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 dotenv.config();
 
-const apiKey = process.env.NEXT_PUBLIC_JUDGE0_API_KEY;
+const apiKey = process.env.JUDGE0_API_;
 
 const customStyles = {
   control: (base) => ({
