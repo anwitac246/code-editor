@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import clientPromise from '../../../src/lib/mongodb';
+import clientPromise from '../../../../src/lib/mongodb';
 
 const addToZip = (zip, node, currentPath = '') => {
   if (node.type === 'file') {
