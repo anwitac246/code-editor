@@ -1,6 +1,6 @@
 
 export async function generateGeminiContent(prompt) {
-  const apiKey = process.env.GEMINI_API_; 
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_APIKEY; 
   console.log(apiKey);
   const url = 'https://generativelanguage.googleapis.com/v1beta2/models/gemini-2.0-flash:generateText'; // update if needed
 

@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase-config';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true); 
@@ -75,6 +76,10 @@ export default function LoginPage() {
           <li>Inline AI code suggestions</li>
           <li>Automatic code fixes</li>
         </ul>
+        <button class=" w-[50%] my-8 bg-blue-900 hover:bg-blue-950 text-white font-semibold py-2 px-6 rounded-xl shadow-md transition duration-300">
+  <Link href="/guest">Try in Guest Mode</Link>
+</button>
+
       </div>
 
       
