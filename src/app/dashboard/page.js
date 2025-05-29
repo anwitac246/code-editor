@@ -15,10 +15,7 @@ export default function Dashboard() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [downloadLoading, setDownloadLoading] = useState({});
   const [downloadProgress, setDownloadProgress] = useState({});
-  const [newProject, setNewProject] = useState({
-    name: '',
-    description: '',
-  });
+  const [newProject, setNewProject] = useState({ name: '', description: '' });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [notification, setNotification] = useState(null);
   const router = useRouter();
@@ -94,6 +91,7 @@ export default function Dashboard() {
       router.push('/login');
     } catch (error) {
       console.error('Error logging out:', error);
+      showNotification('Error logging out.', 'error');
     }
   };
 
@@ -161,9 +159,7 @@ export default function Dashboard() {
 
     setDeleteLoading(true);
     try {
-      const response = await axios.delete(
-        `/api/projects/${projectId}?uid=${uid}`
-      );
+      const response = await axios.delete(`/api/projects/${projectId}?uid=${uid}`);
       console.log(`Project deleted: projectId=${projectId}`, response.data);
       setProjects((prev) => prev.filter((p) => p.projectId !== projectId));
       showNotification('Project deleted successfully', 'success');
@@ -182,148 +178,140 @@ export default function Dashboard() {
   };
 
   const handleDownloadProject = async (projectId, projectName) => {
-  if (loading || createLoading || deleteLoading || downloadLoading[projectId]) {
-    console.log('Download project click ignored: Dashboard is loading');
-    return;
-  }
+    if (loading || createLoading || deleteLoading || downloadLoading[projectId]) {
+      console.log('Download project click ignored: Dashboard is loading');
+      return;
+    }
 
-  if (!projectId || !uid) {
-    console.error('Missing projectId or uid:', { projectId, uid });
-    showNotification('Cannot download project: Missing project or user information', 'error');
-    return;
-  }
+    if (!projectId || !uid) {
+      console.error('Missing projectId or uid:', { projectId, uid });
+      showNotification('Cannot download project: Missing project or user information', 'error');
+      return;
+    }
 
-  console.log(`=== DOWNLOAD DEBUG START ===`);
-  console.log(`Project ID: ${projectId}`);
-  console.log(`Project Name: ${projectName}`);
-  console.log(`User ID: ${uid}`);
-  console.log(`Download URL: /api/projects/${projectId}/download?uid=${uid}`);
-  
-  setDownloadLoading(prev => ({ ...prev, [projectId]: true }));
-  setDownloadProgress(prev => ({ ...prev, [projectId]: 0 }));
+    console.log(`=== DOWNLOAD DEBUG START ===`);
+    console.log(`Project ID: ${projectId}`);
+    console.log(`Project Name: ${projectName}`);
+    console.log(`User ID: ${uid}`);
+    console.log(`Download URL: /api/projects/download?projectId=${projectId}&uid=${uid}`);
 
-  try {
+    setDownloadLoading((prev) => ({ ...prev, [projectId]: true }));
+    setDownloadProgress((prev) => ({ ...prev, [projectId]: 0 }));
 
-    setDownloadProgress(prev => ({ ...prev, [projectId]: 25 }));
-    
-    console.log('Making download request...');
-    
-    const response = await axios.get(
-      `/api/projects/${projectId}/download?uid=${uid}`,
-      {
+    try {
+      setDownloadProgress((prev) => ({ ...prev, [projectId]: 25 }));
+      console.log('Making download request...');
+
+      const response = await axios.get(`/api/projects/download`, {
+        params: { projectId, uid },
         responseType: 'blob',
         onDownloadProgress: (progressEvent) => {
           console.log('Download progress:', progressEvent);
-          if (progressEvent.lengthComputed) {
+          if (progressEvent.lengthComputable) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             console.log(`Download progress: ${percentCompleted}%`);
-            setDownloadProgress(prev => ({ ...prev, [projectId]: Math.max(25, percentCompleted) }));
+            setDownloadProgress((prev) => ({ ...prev, [projectId]: Math.max(25, percentCompleted) }));
           }
         },
         timeout: 30000,
+      });
+
+      console.log('Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        dataSize: response.data?.size || 'unknown',
+      });
+
+      setDownloadProgress((prev) => ({ ...prev, [projectId]: 90 }));
+
+      if (!response.data || response.data.size === 0) {
+        console.error('Empty response data:', response.data);
+        throw new Error('Received empty file from server');
       }
-    );
 
-    console.log('Response received:', {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-      dataSize: response.data?.size || 'unknown'
-    });
+      console.log('Creating blob and download link...');
 
-    setDownloadProgress(prev => ({ ...prev, [projectId]: 90 }));
+      const blob = new Blob([response.data], { type: 'application/zip' });
+      console.log('Blob created:', { size: blob.size, type: blob.type });
 
-    if (!response.data || response.data.size === 0) {
-      console.error('Empty response data:', response.data);
-      throw new Error('Received empty file from server');
-    }
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
 
-    console.log('Creating blob and download link...');
+      const sanitizedProjectName = projectName.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '_');
+      const filename = `${sanitizedProjectName}_${timestamp}.zip`;
+      link.download = filename;
 
-    const blob = new Blob([response.data], { type: 'application/zip' });
-    console.log('Blob created:', { size: blob.size, type: blob.type });
-    
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    
-    const sanitizedProjectName = projectName.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '_');
-    const filename = `${sanitizedProjectName}_${timestamp}.zip`;
-    link.download = filename;
-    
-    console.log('Download filename:', filename);
-    
-    document.body.appendChild(link);
-    link.click();
-    
-    setTimeout(() => {
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    }, 100);
+      console.log('Download filename:', filename);
 
-    setDownloadProgress(prev => ({ ...prev, [projectId]: 100 }));
-    
-    console.log(`Project downloaded successfully: ${projectName} (${blob.size} bytes)`);
-    console.log(`=== DOWNLOAD DEBUG END ===`);
-    showNotification(`Project "${projectName}" downloaded successfully!`, 'success');
-    
-  } catch (error) {
-    console.log(`=== DOWNLOAD ERROR DEBUG START ===`);
-    console.error('Error downloading project:', error);
-    console.error('Error details:', {
-      message: error.message,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      url: error.config?.url,
-      timeout: error.code === 'ECONNABORTED',
-      name: error.name,
-      code: error.code
-    });
-    
+      document.body.appendChild(link);
+      link.click();
 
-    if (error.response?.data) {
-      console.log('Error response data type:', typeof error.response.data);
-      console.log('Error response data:', error.response.data);
-      
-      if (error.response.data instanceof Blob) {
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      setDownloadProgress((prev) => ({ ...prev, [projectId]: 100 }));
+
+      console.log(`Project downloaded successfully: ${projectName} (${blob.size} bytes)`);
+      console.log(`=== DOWNLOAD DEBUG END ===`);
+      showNotification(`Project "${projectName}" downloaded successfully!`, 'success');
+    } catch (error) {
+      console.log(`=== DOWNLOAD ERROR DEBUG START ===`);
+      console.error('Error downloading project:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url: error.config?.url,
+        timeout: error.code === 'ECONNABORTED',
+        name: error.name,
+        code: error.code,
+      });
+
+      if (error.response?.data instanceof Blob) {
         try {
           const errorText = await error.response.data.text();
           console.log('Error response as text:', errorText);
+          error.response.data = JSON.parse(errorText);
         } catch (blobError) {
-          console.log('Could not read error response blob:', blobError);
+          console.log('Could not parse error response blob:', blobError);
         }
       }
+
+      console.log(`=== DOWNLOAD ERROR DEBUG END ===`);
+
+      let errorMessage = 'Failed to download project. Please try again.';
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Download timed out. The project might be too large or the server is busy.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Project not found or no files to download.';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'You do not have permission to download this project.';
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Server error while creating download. Please try again later.';
+      } else if (error.message === 'Received empty file from server') {
+        errorMessage = 'The project appears to be empty or corrupted.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      showNotification(errorMessage, 'error');
+    } finally {
+      setDownloadLoading((prev) => ({ ...prev, [projectId]: false }));
+      setTimeout(() => {
+        setDownloadProgress((prev) => {
+          const newProgress = { ...prev };
+          delete newProgress[projectId];
+          return newProgress;
+        });
+      }, 2000);
     }
-    console.log(`=== DOWNLOAD ERROR DEBUG END ===`);
-    
-    let errorMessage = 'Failed to download project. Please try again.';
-    if (error.code === 'ECONNABORTED') {
-      errorMessage = 'Download timed out. The project might be too large or the server is busy.';
-    } else if (error.response?.status === 404) {
-      errorMessage = 'Project not found or no files to download.';
-    } else if (error.response?.status === 403) {
-      errorMessage = 'You do not have permission to download this project.';
-    } else if (error.response?.status === 500) {
-      errorMessage = 'Server error while creating download. Please try again later.';
-    } else if (error.message === 'Received empty file from server') {
-      errorMessage = 'The project appears to be empty or corrupted.';
-    }
-    
-    showNotification(errorMessage, 'error');
-  } finally {
-    setDownloadLoading(prev => ({ ...prev, [projectId]: false }));
-    
-    setTimeout(() => {
-      setDownloadProgress(prev => {
-        const newProgress = { ...prev };
-        delete newProgress[projectId];
-        return newProgress;
-      });
-    }, 2000);
-  }
-};
+  };
 
   const closeModal = () => {
     setShowCreateModal(false);
@@ -331,14 +319,13 @@ export default function Dashboard() {
   };
 
   return (
-    
     <div className="min-h-screen bg-gradient-to-tr from-[#0f172a] to-[#1e293b] text-white p-8 flex flex-col relative">
-     
       {notification && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-3 max-w-md ${
-          notification.type === 'success' ? 'bg-green-600' : 
-          notification.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
-        }`}>
+        <div
+          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-3 max-w-md ${
+            notification.type === 'success' ? 'bg-green-600' : notification.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+          }`}
+        >
           <FiAlertCircle size={20} />
           <span className="font-medium">{notification.message}</span>
         </div>
@@ -367,13 +354,9 @@ export default function Dashboard() {
       </header>
 
       {loading ? (
-        <div className="text-center text-gray-400 mt-20 text-lg font-medium animate-pulse">
-          Loading projects...
-        </div>
+        <div className="text-center text-gray-400 mt-20 text-lg font-medium animate-pulse">Loading projects...</div>
       ) : projects.length === 0 ? (
-        <div className="text-center text-gray-400 mt-20 text-lg font-medium">
-          No projects found. Click "New Project" to get started!
-        </div>
+        <div className="text-center text-gray-400 mt-20 text-lg font-medium">No projects found. Click "New Project" to get started!</div>
       ) : (
         <main className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 flex-grow overflow-auto">
           {projects.map((project) => (
@@ -381,7 +364,6 @@ export default function Dashboard() {
               key={project._id}
               className="relative bg-[#152238] rounded-xl p-6 shadow-xl shadow-black/60 hover:shadow-cyan-600/80 transition transform hover:-translate-y-1"
             >
-              {/* Action buttons in top-right corner */}
               <div className="absolute top-2 right-2 flex gap-1">
                 <button
                   onClick={() => handleDownloadProject(project.projectId, project.name)}
@@ -401,7 +383,6 @@ export default function Dashboard() {
                   ) : (
                     <FiDownload size={18} />
                   )}
-                  {/* Enhanced tooltip */}
                   <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-90 text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                     Download as ZIP
                   </div>
@@ -413,7 +394,6 @@ export default function Dashboard() {
                   disabled={loading || createLoading || deleteLoading || downloadLoading[project.projectId]}
                 >
                   <FiTrash2 size={18} />
-                  {/* Enhanced tooltip */}
                   <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-90 text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                     Delete project
                   </div>
@@ -434,18 +414,12 @@ export default function Dashboard() {
               >
                 <div className="flex items-center mb-4 text-cyan-400">
                   <FiFolder size={28} />
-                  <h2 className="ml-3 text-2xl font-semibold truncate pr-16">
-                    {project.name || 'Untitled Project'}
-                  </h2>
+                  <h2 className="ml-3 text-2xl font-semibold truncate pr-16">{project.name || 'Untitled Project'}</h2>
                 </div>
-                <p className="text-gray-300 line-clamp-3 min-h-[3rem]">
-                  {project.description || 'No description provided.'}
-                </p>
+                <p className="text-gray-300 line-clamp-3 min-h-[3rem]">{project.description || 'No description provided.'}</p>
                 <div className="mt-4 text-xs text-gray-500 space-y-1">
                   <div>Created: {new Date(project.createdAt).toLocaleDateString()}</div>
-                  {project.updatedAt !== project.createdAt && (
-                    <div>Updated: {new Date(project.updatedAt).toLocaleDateString()}</div>
-                  )}
+                  {project.updatedAt !== project.createdAt && <div>Updated: {new Date(project.updatedAt).toLocaleDateString()}</div>}
                 </div>
               </div>
             </div>
@@ -469,9 +443,7 @@ export default function Dashboard() {
 
             <form onSubmit={handleCreateProject} className="space-y-4">
               <div>
-                <label htmlFor="projectName" className="block text-sm font-medium text-gray-300 mb-2">
-                  Project Name *
-                </label>
+                <label htmlFor="projectName" className="block text-sm font-medium text-gray-300 mb-2">Project Name *</label>
                 <input
                   id="projectName"
                   type="text"
@@ -485,18 +457,11 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <label
-                  htmlFor="projectDescription"
-                  className="block text-sm font-medium text-gray-300 mb-2"
-                >
-                  Description (optional)
-                </label>
+                <label htmlFor="projectDescription" className="block text-sm font-medium text-gray-300 mb-2">Description (optional)</label>
                 <textarea
                   id="projectDescription"
                   value={newProject.description}
-                  onChange={(e) =>
-                    setNewProject((prev) => ({ ...prev, description: e.target.value }))
-                  }
+                  onChange={(e) => setNewProject((prev) => ({ ...prev, description: e.target.value }))}
                   className="w-full px-3 py-2 bg-[#0f172a] border border-gray-600 rounded-md text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 resize-none"
                   placeholder="Enter project description"
                   rows={3}
