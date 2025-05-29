@@ -1,30 +1,35 @@
+import axios from 'axios';
 
 export async function generateGeminiContent(prompt) {
-  const apiKey = process.env.NEXT_PUBLIC_GEMINI_APIKEY; 
-  console.log(apiKey);
-  const url = 'https://generativelanguage.googleapis.com/v1beta2/models/gemini-2.0-flash:generateText'; // update if needed
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('Gemini API key is not configured');
+  }
+
+  if (!prompt) {
+    throw new Error('Prompt is required');
+  }
 
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+    const response = await axios.post(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+      {
+        contents: [{ parts: [{ text: prompt }] }],
       },
-      body: JSON.stringify({
-        prompt: { text: prompt },
-      }),
-    });
+      {
+        params: { key: apiKey },
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+    const result = response.data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!result) {
+      throw new Error('No suggestion returned by Gemini API');
     }
-
-    const data = await response.json();
-    return data.candidates?.[0]?.output || '';
+    return result;
   } catch (error) {
-    console.error('Error calling Gemini API:', error);
-    return `// Mock Gemini response for prompt:\n${prompt.slice(0, 100)}...`;
+    console.error('Error calling Gemini API:', error.response?.data || error.message);
+    throw new Error(`Gemini API error: ${error.response?.data?.error?.message || error.message}`);
   }
 }

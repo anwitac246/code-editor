@@ -418,11 +418,11 @@ export default function CodeEditorWindow({
       setStatus('Error');
     }
   };
-
+//http://localhost:3000/guest
   const handleBugFix = async () => {
     try {
       setStatus('Fixing code...');
-      const response = await axios.post('/api/bugfix', {
+      const response = await axios.post('http://localhost:5000/api/bugfix', {
         code: value,
         language: normalizeLang(language),
       });
@@ -453,7 +453,7 @@ export default function CodeEditorWindow({
           const code = model.getValue();
           if (!code) return { items: [] };
           try {
-            const response = await axios.post('/api/suggestion', {
+            const response = await axios.post('http://localhost:5000/api/suggestion', {
               code,
               language: normalizeLang(selectedLanguageRef.current),
             });
