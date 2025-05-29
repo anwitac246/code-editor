@@ -7,16 +7,11 @@ import { defineTheme } from './themes';
 import { languageOptions } from './language';
 import OutputSection from './output';
 import axios from 'axios';
-import dotenv from 'dotenv';
 import Explorer from './fileExplorer';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase-config';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-dotenv.config();
-
-const apiKey = process.env.NEXT_PUBLIC_JUDGE0_API_;
-console.log(apiKey);
 const customStyles = {
   control: (base) => ({
     ...base,
@@ -215,6 +210,7 @@ export default function CodeEditorWindow({
   const [selectedTabId, setSelectedTabId] = useState(null);
   const [currentFileId, setCurrentFileId] = useState(null);
   const [showGuestNotification, setShowGuestNotification] = useState(false);
+  const [notification, setNotification] = useState(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const editorRef = useRef(null);
@@ -223,30 +219,33 @@ export default function CodeEditorWindow({
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const [guestFiles, setGuestFiles] = useState(
-    new Map([
-      [
-        'sample-js',
-        {
-          id: 'sample-js',
-          name: 'sample.js',
-          content:
-            '// Welcome to the Code Editor!\n// You\'re in guest mode - changes won\'t be saved permanently.\n\nconsole.log("Hello, World!");\n\n// Try writing some code here!',
-          language: 'javascript-node12',
-        },
-      ],
-      [
-        'sample-py',
-        {
-          id: 'sample-py',
-          name: 'sample.py',
-          content:
-            '# Welcome to the Code Editor!\n# You\'re in guest mode - changes won\'t be saved permanently.\n\nprint("Hello, World!")\n\n# Try writing some Python code here!',
-          language: 'python-3.8',
-        },
-      ],
-    ])
-  );
+  const showNotification = (message, type = 'info') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  const guestFiles = new Map([
+    [
+      'sample-js',
+      {
+        id: 'sample-js',
+        name: 'sample.js',
+        content:
+          '// Welcome to the Code Editor!\n// You\'re in guest mode - changes won\'t be saved permanently.\n\nconsole.log("Hello, World!");\n\n// Try writing some code here!',
+        language: 'javascript-node12',
+      },
+    ],
+    [
+      'sample-py',
+      {
+        id: 'sample-py',
+        name: 'sample.py',
+        content:
+          '# Welcome to the Code Editor!\n# You\'re in guest mode - changes won\'t be saved permanently.\n\nprint("Hello, World!")\n\n# Try writing some Python code here!',
+        language: 'python-3.8',
+      },
+    ],
+  ]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -324,6 +323,7 @@ export default function CodeEditorWindow({
       console.log(`File ${fileId} saved to MongoDB`);
     } catch (error) {
       console.error('Error saving to MongoDB:', error);
+      showNotification('Failed to save file.', 'error');
     }
   };
 
@@ -331,7 +331,7 @@ export default function CodeEditorWindow({
     if (isAuthenticated) {
       return;
     }
-    setGuestFiles((prev) => new Map(prev.set(fileId, { ...prev.get(fileId), content })));
+    guestFiles.set(fileId, { ...guestFiles.get(fileId), content });
   };
 
   const loadFileLocally = (fileId) => {
@@ -391,6 +391,7 @@ export default function CodeEditorWindow({
       if (!selectedLang?.id) {
         setOutput('Error: Language not supported for compilation.');
         setStatus('Error');
+        showNotification('Language not supported for compilation.', 'error');
         return;
       }
       const submissionResponse = await axios.post(
@@ -404,7 +405,7 @@ export default function CodeEditorWindow({
           headers: {
             'Content-Type': 'application/json',
             'x-rapidapi-host': 'judge0-ce.p.rapidapi.com',
-            'x-rapidapi-key': apiKey,
+            'x-rapidapi-key': process.env.NEXT_PUBLIC_JUDGE0_API_,
           },
         }
       );
@@ -413,16 +414,18 @@ export default function CodeEditorWindow({
       setStatus(result.status?.description || 'Completed');
       setTimeTaken(result.time || 'N/A');
       setMemoryUsed(result.memory || 'N/A');
+      showNotification('Code executed successfully.', 'success');
     } catch (error) {
       setOutput(`Error: ${error.response?.data?.message || error.message}`);
       setStatus('Error');
+      showNotification('Error running code.', 'error');
     }
   };
-//http://localhost:3000/guest
+
   const handleBugFix = async () => {
     try {
       setStatus('Fixing code...');
-      const response = await axios.post('http://localhost:5000/api/bugfix', {
+      const response = await axios.post('/api/bugfix', {
         code: value,
         language: normalizeLang(language),
       });
@@ -434,14 +437,17 @@ export default function CodeEditorWindow({
         if (currentFileId && isAuthenticated) {
           saveToMongoDB(currentFileId, fixedCode, language);
         }
+        showNotification('Bug fix applied successfully.', 'success');
       } else {
         setOutput('No fix available.');
         setStatus('No fix');
+        showNotification('No bug fix available.', 'info');
       }
     } catch (error) {
       console.error('Error fixing code:', error);
       setOutput('Error fixing code: ' + error.message);
       setStatus('Error');
+      showNotification('Error fixing code.', 'error');
     }
   };
 
@@ -453,12 +459,17 @@ export default function CodeEditorWindow({
           const code = model.getValue();
           if (!code) return { items: [] };
           try {
-            const response = await axios.post('http://localhost:5000/api/suggestion', {
+            console.log('Fetching suggestion for language:', normalizeLang(selectedLanguageRef.current));
+            const response = await axios.post('/api/suggestion', {
               code,
               language: normalizeLang(selectedLanguageRef.current),
             });
             let suggestion = response.data.suggestion || '';
-            if (!suggestion) return { items: [] };
+            if (!suggestion) {
+              console.log('No suggestion returned');
+              return { items: [] };
+            }
+            console.log('Suggestion received:', suggestion);
             return {
               items: [
                 {
@@ -474,7 +485,8 @@ export default function CodeEditorWindow({
               dispose: () => {},
             };
           } catch (error) {
-            console.error('Error fetching suggestion:', error);
+            console.error('Error fetching suggestion:', error.response?.data || error.message);
+            showNotification('Failed to fetch code suggestion.', 'error');
             return { items: [] };
           }
         },
@@ -588,10 +600,19 @@ export default function CodeEditorWindow({
 
   return (
     <div className="flex flex-col md:flex-row justify-center gap-6 p-6 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 min-h-screen text-gray-200">
-      {showGuestNotification && (
-        <div className="fixed top-4 right-4 bg-yellow-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-notification">
-          <div className="text-sm font-semibold">Guest Mode</div>
-          <div className="text-xs">Changes won't be saved permanently</div>
+      {(showGuestNotification || notification) && (
+        <div className={`fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 animate-notification ${
+          notification?.type === 'error' ? 'bg-red-600' :
+          notification?.type === 'success' ? 'bg-green-600' :
+          notification?.type === 'info' ? 'bg-blue-600' :
+          'bg-yellow-600'
+        } text-white`}>
+          <div className="text-sm font-semibold">
+            {notification ? notification.message : 'Guest Mode'}
+          </div>
+          {!notification && (
+            <div className="text-xs">Changes won't be saved permanently</div>
+          )}
         </div>
       )}
 
@@ -627,7 +648,7 @@ export default function CodeEditorWindow({
                   backgroundColor: state.isFocused ? '#2563eb' : '#1f2937',
                   color: 'white',
                   cursor: 'pointer',
-                  transition: 'background-color 0.3s ease',
+                  transition: 'background-color',
                 }),
                 singleValue: (base) => ({
                   ...base,
@@ -646,6 +667,7 @@ export default function CodeEditorWindow({
                 key: themeId,
               }))}
               value={{ label: theme, value: theme }}
+              onChange={handleThemeChange}
               styles={{
                 ...customStyles,
                 control: (base) => ({
@@ -660,19 +682,18 @@ export default function CodeEditorWindow({
                   backgroundColor: state.isFocused ? '#2563eb' : '#1f2937',
                   color: 'white',
                   cursor: 'pointer',
-                  transition: 'background-color 0.3s ease',
+                  transition: 'background-color',
                 }),
                 singleValue: (base) => ({
                   ...base,
                   color: 'white',
                 }),
               }}
-              onChange={handleThemeChange}
             />
           </div>
         </div>
 
-        <div className="relative rounded-xl overflow-hidden shadow-2xl bg-gradient-to-tr from-gray-800 to-gray-900 animate-fadeIn">
+        <div className="relative rounded-xl overflow-hidden shadow-2xl bg-gradient-to-tr from-gray-800 to-gray-900 animate-pulse">
           <Editor
             height="85vh"
             width="100%"
@@ -691,7 +712,7 @@ export default function CodeEditorWindow({
               tabCompletion: 'on',
               smoothScrolling: true,
               cursorBlinking: 'phase',
-              cursorSmoothCaretAnimation: true,
+              cursorSmoothCaretAnimation: 'on',
             }}
           />
         </div>
@@ -699,7 +720,7 @@ export default function CodeEditorWindow({
 
       <div className="w-full md:w-1/3 flex flex-col gap-5">
         <textarea
-          rows="10"
+          rows="2"
           value={customInput}
           onChange={(e) => setCustomInput(e.target.value)}
           placeholder="Custom input"
@@ -725,7 +746,7 @@ export default function CodeEditorWindow({
         </div>
 
         <button
-          className="w-full bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg px-6 py-3 font-semibold transition-transform duration-300 transform hover:scale-105 shadow-lg"
+          className="w-full bg-cyan-600 hover:bg-blue-700 text-white rounded-lg px-6 py-3 font-semibold transition-transform duration-300 transform hover:scale-105 shadow-lg"
           onClick={handleRunCode}
         >
           Run
@@ -739,26 +760,18 @@ export default function CodeEditorWindow({
       </div>
 
       <style jsx>{`
-        @keyframes notification {
-          0% {
+        @keyframes slideDown {
+          from {
             opacity: 0;
             transform: translateY(-10px);
           }
-          10% {
+          to {
             opacity: 1;
             transform: translateY(0);
-          }
-          90% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-          100% {
-            opacity: 0;
-            transform: translateY(-10px);
           }
         }
         .animate-notification {
-          animation: notification 5s ease-in-out forwards;
+          animation: slideDown 0.5s ease-out;
         }
       `}</style>
     </div>

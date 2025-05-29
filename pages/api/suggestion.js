@@ -8,15 +8,22 @@ const SYSTEM_PROMPT =
   `always provide syntactically correct code snippet`;
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+  if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
   try {
     const { code = '', language = '' } = req.body;
+    if (!code || !language) {
+      return res.status(400).json({ message: 'Missing code or language in request body' });
+    }
+
     const prompt = `${SYSTEM_PROMPT} in ${language}\n\n${code}`;
     const suggestion = await generateGeminiContent(prompt);
     res.status(200).json({ suggestion: suggestion.trim() });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error) {
+    console.error('Error in suggestion:', error.message);
+    res.status(500).json({ 
+      message: 'Failed to generate suggestion',
+      error: error.message 
+    });
   }
 }
