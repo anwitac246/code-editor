@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export async function generateGeminiContent(prompt) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_APIKEY;
 
   if (!apiKey) {
     throw new Error('Gemini API key is not configured');
