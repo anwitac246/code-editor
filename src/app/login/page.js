@@ -76,7 +76,7 @@ export default function LoginPage() {
           <li>Inline AI code suggestions</li>
           <li>Automatic code fixes</li>
         </ul>
-        <button class=" w-[50%] my-8 bg-blue-900 hover:bg-blue-950 text-white font-semibold py-2 px-6 rounded-xl shadow-md transition duration-300">
+        <button className=" w-[50%] my-8 bg-blue-900 hover:bg-blue-950 text-white font-semibold py-2 px-6 rounded-xl shadow-md transition duration-300">
   <Link href="/guest">Try in Guest Mode</Link>
 </button>
 
